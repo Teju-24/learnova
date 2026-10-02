@@ -1,7 +1,6 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import type { User } from "@supabase/supabase-js";
 import SignOutButton from "@/components/SignOutButton";
 import { Container } from "@/components/Container";
 import FeedbackFab from "@/components/FeedbackFab";
@@ -11,6 +10,7 @@ import DashboardReview from "@/components/dashboard/DashboardReview";
 import DashboardPath from "@/components/dashboard/DashboardPath";
 import DashboardProfile from "@/components/dashboard/DashboardProfile";
 import DashboardHeaderSkeleton from "@/components/skeletons/DashboardHeaderSkeleton";
+import DashboardSkeleton from "@/components/skeletons/DashboardSkeleton";
 import RoadmapSkeleton from "@/components/skeletons/RoadmapSkeleton";
 import PathCardsSkeleton from "@/components/skeletons/PathCardsSkeleton";
 import ProfileCardSkeleton from "@/components/skeletons/ProfileCardSkeleton";
@@ -21,6 +21,7 @@ import {
   loadLearner,
   loadPathView,
   loadReviewData,
+  type AuthUser,
 } from "@/lib/dashboard-data";
 import { countMasteredConcepts } from "@/lib/tier";
 import { certificateProgress, displayName } from "@/lib/learner";
@@ -35,7 +36,7 @@ import { certificateProgress, displayName } from "@/lib/learner";
  * does not multiply the queries.
  */
 
-async function HeaderSection({ user }: { user: User }) {
+async function HeaderSection({ user }: { user: AuthUser }) {
   // Both reads only need the user id, so they run together.
   const [learner, certificate] = await Promise.all([
     loadLearner(user.id),
@@ -111,18 +112,40 @@ async function ProfileSection({ userId }: { userId: string }) {
   );
 }
 
+/**
+ * Resolves the learner row and enforces the onboarding gate. Kept behind its own
+ * Suspense boundary so the nav and page shell flush immediately — the learner
+ * query is the first authenticated DB round-trip and would otherwise hold the
+ * whole page. The section boundaries inside then stream independently.
+ */
+async function DashboardGate({ user }: { user: AuthUser }) {
+  const learner = await loadLearner(user.id);
+  if (!learner?.goal) {
+    redirect("/start");
+  }
+
+  return (
+    <div className="space-y-8">
+      <Suspense fallback={<DashboardHeaderSkeleton />}>
+        <HeaderSection user={user} />
+      </Suspense>
+      <Suspense fallback={<RoadmapSkeleton />}>
+        <RoadmapSection userId={user.id} />
+      </Suspense>
+      <Suspense fallback={<PathCardsSkeleton />}>
+        <PathSection userId={user.id} />
+      </Suspense>
+      <Suspense fallback={<ProfileCardSkeleton />}>
+        <ProfileSection userId={user.id} />
+      </Suspense>
+    </div>
+  );
+}
+
 export default async function MePage() {
   const user = await getAuthUser();
   if (!user) {
     redirect("/login");
-  }
-
-  // The learner row is needed by every section and gates the onboarding
-  // redirect, so it is resolved once here. It is cached, so the sections below
-  // do not re-query it.
-  const learner = await loadLearner(user.id);
-  if (!learner?.goal) {
-    redirect("/start");
   }
 
   return (
@@ -144,20 +167,9 @@ export default async function MePage() {
       </nav>
 
       <Container className="py-8 pb-24">
-        <div className="space-y-8">
-          <Suspense fallback={<DashboardHeaderSkeleton />}>
-            <HeaderSection user={user} />
-          </Suspense>
-          <Suspense fallback={<RoadmapSkeleton />}>
-            <RoadmapSection userId={user.id} />
-          </Suspense>
-          <Suspense fallback={<PathCardsSkeleton />}>
-            <PathSection userId={user.id} />
-          </Suspense>
-          <Suspense fallback={<ProfileCardSkeleton />}>
-            <ProfileSection userId={user.id} />
-          </Suspense>
-        </div>
+        <Suspense fallback={<DashboardSkeleton />}>
+          <DashboardGate user={user} />
+        </Suspense>
       </Container>
     </main>
   );

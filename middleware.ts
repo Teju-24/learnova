@@ -29,15 +29,29 @@ export async function middleware(request: NextRequest) {
     },
   });
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  // Verify the JWT locally when the project uses asymmetric signing keys
+  // (getClaims only reaches the network for legacy symmetric keys, in which
+  // case it is no slower than the getUser call it replaces). The dashboard page
+  // still re-verifies independently, so this gate stays authoritative enough
+  // for a redirect while dropping a network hop from the common path.
+  const authStart = Date.now();
+  const { data: claimsData } = await supabase.auth.getClaims();
+  const authed = Boolean(claimsData?.claims?.sub);
+  const authMs = Date.now() - authStart;
+
+  // Visible in the browser Network panel without server log access.
+  response.headers.set("Server-Timing", `mw-auth;dur=${authMs}`);
+  if (process.env.DASHBOARD_DEBUG === "1") {
+    console.log(
+      `[middleware-timing] auth.getClaims: ${authMs}ms authed=${authed}`
+    );
+  }
 
   const isProtected = PROTECTED_PREFIXES.some((p) =>
     request.nextUrl.pathname.startsWith(p)
   );
 
-  if (isProtected && !user) {
+  if (isProtected && !authed) {
     const loginUrl = request.nextUrl.clone();
     loginUrl.pathname = "/login";
     loginUrl.searchParams.set("next", request.nextUrl.pathname);

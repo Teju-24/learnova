@@ -1,10 +1,10 @@
 import { cache } from "react";
 import { unstable_cache } from "next/cache";
 import { createClient as createSupabaseClient } from "@supabase/supabase-js";
-import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/server";
 import { MASTERED_AT, resolveTier, tierLabel } from "@/lib/tier";
 import { reviewCandidates, type ReviewCandidate } from "@/lib/learner";
+import { dashboardLog, timed } from "@/lib/timing";
 import type { RoadmapProps } from "@/components/Roadmap";
 import type { PathViewItem } from "@/lib/dashboard-types";
 
@@ -68,12 +68,30 @@ type FeedbackRow = {
  */
 const getSupabase = cache(async () => createClient());
 
-export const getAuthUser = cache(async (): Promise<User | null> => {
+/**
+ * Only the two fields the dashboard actually uses. Reading them from verified
+ * JWT claims (`getClaims`) instead of `getUser()` keeps the token verification
+ * local on projects with asymmetric signing keys (the modern default) and falls
+ * back to a network check on legacy symmetric keys — never worse than before.
+ */
+export type AuthUser = {
+  id: string;
+  email: string | null;
+};
+
+export const getAuthUser = cache(async (): Promise<AuthUser | null> => {
   const supabase = await getSupabase();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  return timed("auth.getClaims", async () => {
+    const { data, error } = await supabase.auth.getClaims();
+    if (error || !data) return null;
+    const sub = data.claims.sub;
+    if (typeof sub !== "string" || sub.length === 0) return null;
+    return {
+      id: sub,
+      email:
+        typeof data.claims.email === "string" ? data.claims.email : null,
+    };
+  });
 });
 
 /**
@@ -84,16 +102,22 @@ export const getAuthUser = cache(async (): Promise<User | null> => {
  */
 const loadAllConcepts = unstable_cache(
   async (): Promise<ConceptRow[]> => {
+    // Logged only on a cache miss. If this shows up on every request in the
+    // deployment, the incremental cache is not persisting and concepts are
+    // being refetched each time.
+    dashboardLog("concepts cache MISS — fetching curriculum graph");
     const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
     if (!url || !key) return [];
     const client = createSupabaseClient(url, key, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
-    const { data, error } = await client
-      .from("concepts")
-      .select("id, slug, title, prerequisites")
-      .returns<ConceptRow[]>();
+    const { data, error } = await timed("concepts.fetch", () =>
+      client
+        .from("concepts")
+        .select("id, slug, title, prerequisites")
+        .returns<ConceptRow[]>()
+    );
     if (error) {
       console.warn("[dashboard] concepts fetch failed:", error.message);
       return [];
@@ -117,22 +141,31 @@ export const loadLearner = cache(
     const OPTIONAL_COLUMNS =
       ", learner_name, show_feedback_prompt, show_deep_feedback_prompt, lesson_progress, concept_completed_at";
 
-    const { data, error } = await supabase
-      .from("learners")
-      .select(`${BASE_COLUMNS}${OPTIONAL_COLUMNS}`)
-      .eq("user_id", userId)
-      .limit(1)
-      .returns<LearnerRow[]>();
-
-    if (error) {
-      // Expected while any of 006-009 is pending, not a real failure.
-      console.warn("[me] optional learner columns unavailable:", error.message);
-      const retry = await supabase
+    const { data, error } = await timed("learners.query", () =>
+      supabase
         .from("learners")
-        .select(BASE_COLUMNS)
+        .select(`${BASE_COLUMNS}${OPTIONAL_COLUMNS}`)
         .eq("user_id", userId)
         .limit(1)
-        .returns<LearnerRow[]>();
+        .returns<LearnerRow[]>()
+    );
+
+    if (error) {
+      // Expected while any of 006-009 is pending, not a real failure. Logged
+      // unconditionally because in the deployment this doubles the learner
+      // query (a failed select plus a retry) on every dashboard load.
+      console.warn(
+        "[me] optional learner columns unavailable (%s) — retrying with base columns; this adds a second query per request",
+        error.message
+      );
+      const retry = await timed("learners.query.retry", () =>
+        supabase
+          .from("learners")
+          .select(BASE_COLUMNS)
+          .eq("user_id", userId)
+          .limit(1)
+          .returns<LearnerRow[]>()
+      );
       return retry.data?.[0] ?? null;
     }
     return data?.[0] ?? null;
@@ -387,24 +420,28 @@ export const loadReviewData = cache(
     const mastery = learner.mastery ?? {};
     const supabase = await getSupabase();
 
-    const [{ data: seenRows }, { data: attemptRows }] = await Promise.all([
-      pathIds.length > 0
-        ? supabase
-            .from("learner_concepts")
-            .select("concept_id, last_seen")
-            .eq("user_id", userId)
-            .in("concept_id", pathIds)
-        : Promise.resolve({ data: [] as unknown[] }),
-      pathIds.length > 0
-        ? supabase
-            .from("test_attempts")
-            .select("concept_id, passed, created_at")
-            .eq("user_id", userId)
-            .in("concept_id", pathIds)
-            .order("created_at", { ascending: false })
-            .limit(200)
-        : Promise.resolve({ data: [] as unknown[] }),
-    ]);
+    const [{ data: seenRows }, { data: attemptRows }] = await timed(
+      "review.query",
+      () =>
+        Promise.all([
+          pathIds.length > 0
+            ? supabase
+                .from("learner_concepts")
+                .select("concept_id, last_seen")
+                .eq("user_id", userId)
+                .in("concept_id", pathIds)
+            : Promise.resolve({ data: [] as unknown[] }),
+          pathIds.length > 0
+            ? supabase
+                .from("test_attempts")
+                .select("concept_id, passed, created_at")
+                .eq("user_id", userId)
+                .in("concept_id", pathIds)
+                .order("created_at", { ascending: false })
+                .limit(200)
+            : Promise.resolve({ data: [] as unknown[] }),
+        ])
+    );
 
     if (!seenRows) {
       console.warn(
@@ -438,13 +475,15 @@ export const loadReviewData = cache(
 export const loadFeedbackInterests = cache(
   async (userId: string): Promise<string[]> => {
     const supabase = await getSupabase();
-    const { data } = await supabase
-      .from("feedback")
-      .select("interests")
-      .eq("user_id", userId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .returns<FeedbackRow[]>();
+    const { data } = await timed("feedback.query", () =>
+      supabase
+        .from("feedback")
+        .select("interests")
+        .eq("user_id", userId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .returns<FeedbackRow[]>()
+    );
 
     return (data?.[0]?.interests ?? "")
       .split(",")
@@ -460,11 +499,13 @@ export const loadFeedbackInterests = cache(
 export const loadCertificate = cache(
   async (userId: string): Promise<{ issuedAt: string | null }> => {
     const supabase = await getSupabase();
-    const { data } = await supabase
-      .from("certificates")
-      .select("issued_at")
-      .eq("user_id", userId)
-      .limit(1);
+    const { data } = await timed("certificates.query", () =>
+      supabase
+        .from("certificates")
+        .select("issued_at")
+        .eq("user_id", userId)
+        .limit(1)
+    );
     const issuedAt =
       (data?.[0] as { issued_at?: string } | undefined)?.issued_at ?? null;
     return { issuedAt };
