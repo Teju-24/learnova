@@ -1,0 +1,135 @@
+{
+  "concept_slug": "python-basics",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Python Basics",
+    "summary": "Python is the language almost all AI is written in. Before you can train a model or read a research paper, you need to be able to write a few lines of clear Python code.",
+    "learning_goals": [
+      "Store values in variables",
+      "Combine variables with arithmetic",
+      "Display what is inside a variable with print",
+      "Recognize the most common mistakes beginners make"
+    ],
+    "long_intro": "Python is the most-used programming language in AI research and industry. Every major AI library — PyTorch, TensorFlow, scikit-learn, Hugging Face — is written in Python first. The good news is you do not need to learn much of it to get started. In this lesson you will learn the three things that appear in every Python script you will ever write: variables (labeled containers that hold values), arithmetic (combining those values with math), and print (a way to see what is inside a variable). By the end you will have written your first real Python code and you will be able to read the small examples that appear in every AI tutorial.",
+    "deep_explanation": [
+      {
+        "heading": "Variables: labeled boxes for values",
+        "body": "A variable is a name that points to a value. When you write a = 5, Python creates a box labeled 'a' and puts the number 5 inside. Anywhere you write 'a' later, Python looks in the box and uses 5. You can change what is in the box at any time by assigning a new value: a = 7 replaces the old 5 with 7. This is how every AI model keeps track of things. A variable named weights might hold millions of numbers that the model is learning. A variable named learning_rate holds the small number that controls how fast the model updates. Variables are the fundamental unit of state in any program.",
+        "code": "a = 5\nprint(a)   # shows 5\na = 7\nprint(a)   # shows 7"
+      },
+      {
+        "heading": "Arithmetic: combining variables",
+        "body": "Once values live in variables, you can combine them with the four standard operators: + (add), - (subtract), * (multiply), and / (divide). The result of the combination can be stored in another variable. This is exactly what a neural network does at every step — it takes some values, multiplies them by weights, adds them up, and passes the result forward. When you see a neural network described as 'multiplying inputs by weights and summing', this is the operation they mean. It looks simple because it is simple at the lowest level. The complexity comes from doing it millions of times at once.",
+        "code": "a = 5\nb = 3\nsum = a + b\nproduct = a * b\nprint(sum)      # shows 8\nprint(product)  # shows 15"
+      },
+      {
+        "heading": "print: seeing what is inside",
+        "body": "print() is your window into what is happening. Whenever you want to know the value of a variable, write print(variable_name) and Python shows you. This is the first debugging tool you will use in every AI experiment. When a training loop is not converging, you print the loss. When a model is producing strange outputs, you print the intermediate values. When you are not sure why code is behaving a certain way, you print everything and look. print() is not just for beginners — it is how experienced practitioners investigate problems.",
+        "code": "score = 0.75\nprint(score)  # shows 0.75\nprint(\"final score:\", score)  # shows 'final score: 0.75'"
+      }
+    ],
+    "formal_definition": "A variable is a name bound to a value in memory. In Python, variables are created by assignment: name = value. Python is dynamically typed, meaning a variable can hold values of different types over its lifetime without being declared ahead of time. Arithmetic operators (+, -, *, /) combine numeric values. print() is a built-in function that writes its arguments to standard output.",
+    "code_example": {
+      "language": "python",
+      "code": "a = 5\nb = 3\nsum_ab = a + b\nproduct_ab = a * b\nprint(\"Sum:\", sum_ab, \"Product:\", product_ab)",
+      "universal_explanation": "We store two numbers in variables a and b. We add them to get sum_ab, multiply them to get product_ab, then print both results on one line. The output is: Sum: 8 Product: 15."
+    },
+    "common_mistakes": [
+      "Forgetting the equals sign: writing a 5 instead of a = 5 stores nothing and Python will raise an error.",
+      "Using == for assignment: == is the equality check ('is this equal to?'), while = is the assignment ('store this value'). Mixing them up is the single most common beginner mistake.",
+      "Using a variable before it exists: writing print(x) before x = 5 raises a NameError because x has no value yet.",
+      "Calling print without parentheses: print is a function, so it needs print(x), not print x.",
+      "Naming a variable with a reserved word: names like print, if, for, and class are reserved by Python and cannot be used as variable names."
+    ],
+    "real_world_usage": "Every AI training script starts with variables. When you read a PyTorch tutorial, lines like 'learning_rate = 0.001', 'batch_size = 32', and 'num_epochs = 10' are exactly this concept — named values used later in the training loop. Understanding variables means you can read the top of any training script and understand what the model's configuration is.",
+    "key_takeaways": [
+      "A variable is a name that holds a value.",
+      "You create a variable with name = value.",
+      "The four arithmetic operators are +, -, *, and /.",
+      "print() shows what is inside a variable.",
+      "Almost every line of AI code you will ever read uses variables."
+    ],
+    "estimated_minutes": 8
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "To store the value 10 in a variable called x, you write ___.",
+      "options": ["x = 10", "x == 10", "10 = x"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Write Python code that creates two variables, a and b, sets a to 5 and b to 3, then computes and prints their sum. Your output should be the number 8.",
+      "starter_code": "# Create variables a and b\n# Compute their sum\n# Print the result\n",
+      "reference_code": "a = 5\nb = 3\nprint(a + b)",
+      "rubric": "Should include: (1) assignment of 5 to variable a, (2) assignment of 3 to variable b, (3) a print statement that outputs their sum (a + b) or the pre-computed sum. Any valid Python syntax is acceptable.",
+      "language": "python",
+      "min_lines": 3
+    }},
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What does this code display?\n\na = 4\nb = 2\nprint(a * b)",
+      "choices": ["6", "8", "42"],
+      "correct_index": 1,
+      "reveal": "The * operator multiplies. 4 * 2 = 8, so Python prints 8."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "a = 5\nb 3\nprint(a + b)",
+      "wrong_line": 2,
+      "explanation": "Line 2 is missing the assignment operator. It should be 'b = 3' to store 3 in b. Without the equals sign, Python does not know what to do with 'b 3'."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what a variable is and why it is useful in AI code.",
+      "rubric": "Should mention that a variable stores a value under a name, and that AI code uses variables to hold configuration values, weights, and intermediate results.",
+      "min_words": 15
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "To create a variable named score with value 100, you write ___.",
+      "options": ["score = 100", "score == 100", "100 = score"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What does this print?\n\nx = 10\ny = 3\nprint(x - y)",
+      "choices": ["7", "13", "30"],
+      "correct_index": 0,
+      "reveal": "The - operator subtracts. 10 - 3 = 7."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "score = 100\nhigh_score 200\nprint(score + high_score)",
+      "wrong_line": 2,
+      "explanation": "Line 2 is missing the equals sign. It should be 'high_score = 200'."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Create a variable a and store 5 in it",
+        "Create a variable b and store 3 in it",
+        "Compute the sum a + b and store it in sum",
+        "Print the value of sum"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain the difference between = and == in Python.",
+      "rubric": "Should say = assigns a value to a variable, while == compares two values for equality.",
+      "min_words": 10
+    }
+  ]
+}

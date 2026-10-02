@@ -1,0 +1,156 @@
+{
+  "concept_slug": "fine-tuning",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Fine-tuning: LoRA, RLHF, and Parameter-Efficient Methods",
+    "summary": "Full fine-tuning updates billions of parameters. LoRA and other parameter-efficient methods train less than 1% of them with similar results.",
+    "learning_goals": [
+      "Understand parameter-efficient fine-tuning (PEFT)",
+      "Read LoRA in code",
+      "Understand RLHF and instruction tuning",
+      "Choose the right fine-tuning method for a task"
+    ],
+    "long_intro": "You know what fine-tuning is. This lesson covers the modern methods that make it practical. Full fine-tuning of a 7-billion parameter model requires multiple GPUs and hours of training. LoRA (Low-Rank Adaptation) freezes the base model and trains tiny adapter matrices — often less than 1% of the parameters — with quality that matches full fine-tuning on most tasks. RLHF (Reinforcement Learning from Human Feedback) is how ChatGPT was made: fine-tune on demonstrations, then refine with human preference signals. Instruction tuning turns a base model into an assistant. Together these techniques are how modern production models are built.",
+    "deep_explanation": [
+      {
+        "heading": "Parameter-efficient fine-tuning (PEFT)",
+        "body": "Full fine-tuning updates every weight in the model. For a 7B parameter model, that is 7 billion weights — a lot of memory and compute. PEFT methods freeze the base model and train only a small number of new parameters. The most popular is LoRA, which adds low-rank matrices to each attention layer. You train only those small matrices, which typically contain 0.1-1% of the total parameters. The base model stays frozen, so you can share it across many fine-tuned variants.",
+        "code": "# PEFT vs full fine-tuning\nmethods = {\n    \"Full fine-tuning\":  {\n        \"trainable_params\": \"100%\",\n        \"memory\": \"very high\",\n        \"quality\": \"baseline\",\n    },\n    \"LoRA\": {\n        \"trainable_params\": \"~0.5%\",\n        \"memory\": \"much lower\",\n        \"quality\": \"close to full\",\n    },\n}\n\nfor name, info in methods.items():\n    print(f\"{name}:\")\n    for k, v in info.items():\n        print(f\"  {k}: {v}\")"
+      },
+      {
+        "heading": "LoRA: low-rank adaptation",
+        "body": "LoRA works by adding a small trainable matrix to each weight matrix in the model. Instead of updating the full weight matrix W, LoRA learns two smaller matrices A and B such that the effective weight is W + BA. If W is 1000×1000 and the rank r is 8, then A is 8×1000 and B is 1000×8 — about 16,000 parameters instead of 1,000,000. The base model stays frozen; only A and B are trained. At inference, you can merge the LoRA weights back into the base model, so there is no runtime overhead.",
+        "code": "# LoRA: W + BA\n# Base weight matrix W is frozen\n# A and B are small trainable matrices\n\nW = [[1.0, 2.0, 3.0],\n     [4.0, 5.0, 6.0]]   # 2x3\n\n# LoRA rank r = 1\nA = [[0.1, 0.2, 0.3]]   # 1x3\nB = [[0.5],\n     [0.7]]              # 2x1\n\n# BA is 2x3, same shape as W\ndef matmul(X, Y):\n    n, m = len(X), len(Y[0])\n    k = len(Y)\n    return [[sum(X[i][p] * Y[p][j] for p in range(k)) for j in range(m)] for i in range(n)]\n\nBA = matmul(B, A)\nW_effective = [[W[i][j] + BA[i][j] for j in range(len(W[0]))] for i in range(len(W))]\nprint(\"Effective weights:\", W_effective)\nprint(\"Trainable params (A + B):\", len(A) * len(A[0]) + len(B) * len(B[0]))\nprint(\"Original params (W):\", len(W) * len(W[0]))"
+      },
+      {
+        "heading": "Instruction tuning",
+        "body": "Base language models are trained to predict the next token, not to follow instructions. If you ask a base model 'summarise this article', it may continue the text as if writing an essay about summarisation, not actually summarise. Instruction tuning fine-tunes the model on thousands of (instruction, response) pairs so it learns to follow instructions. InstructGPT (the basis for ChatGPT) was created this way. Every modern chat model — Claude, Gemini, Llama-Chat — has been instruction-tuned.",
+        "code": "# Instruction tuning examples\ninstruction_data = [\n    {\"instruction\": \"Classify sentiment\", \n     \"input\": \"I love this product\", \n     \"response\": \"Positive\"},\n    {\"instruction\": \"Summarise\", \n     \"input\": \"Long article text here...\", \n     \"response\": \"Short summary.\"},\n]\n\nfor ex in instruction_data:\n    print(f\"### Instruction: {ex['instruction']}\")\n    print(f\"### Input: {ex['input']}\")\n    print(f\"### Response: {ex['response']}\\n\")"
+      },
+      {
+        "heading": "RLHF: learning from human preferences",
+        "body": "RLHF (Reinforcement Learning from Human Feedback) is how ChatGPT, Claude, and Gemini were aligned with human preferences. The process: (1) collect human demonstrations of good responses; (2) train a reward model on human comparisons (which of two responses do you prefer?); (3) use reinforcement learning (typically PPO) to fine-tune the model to maximise the reward model's score. The result is a model that produces responses humans prefer — helpful, harmless, and honest. RLHF is what turned GPT-3 into ChatGPT.",
+        "code": "# RLHF three-stage process\nstages = [\n    \"1. Supervised fine-tuning on human demonstrations\",\n    \"2. Train reward model on human preference comparisons\",\n    \"3. RL (PPO) to maximise reward model score\",\n]\n\nfor s in stages:\n    print(s)\n\nprint()\nprint(\"Result: model aligned with human preferences\")"
+      }
+    ],
+    "formal_definition": "Parameter-efficient fine-tuning (PEFT) methods train a small fraction of a model's parameters while keeping the base frozen. LoRA (Low-Rank Adaptation) injects trainable rank-r matrices A and B into each weight matrix W, so the effective weight is W + BA where A has shape r×d and B has shape d×r. Instruction tuning fine-tunes on (instruction, response) pairs to align a base model with instruction-following behaviour. RLHF uses human preference data to train a reward model, then optimises the policy via RL (typically PPO) to maximise that reward.",
+    "code_example": {
+      "language": "python",
+      "code": "# LoRA in PyTorch (conceptual)\n# import torch.nn as nn\n# import torch\n#\n# class LoRALinear(nn.Module):\n#     def __init__(self, base_layer, rank=8):\n#         super().__init__()\n#         self.base = base_layer\n#         for p in self.base.parameters():\n#             p.requires_grad = False   # freeze base\n#         \n#         in_dim = base_layer.in_features\n#         out_dim = base_layer.out_features\n#         self.A = nn.Parameter(torch.randn(rank, in_dim) * 0.01)\n#         self.B = nn.Parameter(torch.zeros(out_dim, rank))\n#     \n#     def forward(self, x):\n#         return self.base(x) + (x @ self.A.T @ self.B.T)\n#\n# # Usage: replace nn.Linear with LoRALinear\n# # Only A and B train; base weights stay frozen\n\nprint(\"LoRA: freeze base, train A and B\")\nprint(\"Typical rank r = 4, 8, or 16\")\nprint(\"Trainable params: ~0.1-1% of the base model\")",
+      "universal_explanation": "LoRA wraps an existing linear layer with two small trainable matrices A and B. The base layer's weights are frozen, so only A and B receive gradients during training. The forward pass adds BA to the base output, learning a low-rank correction to the original weight matrix. This is why LoRA trains less than 1% of a model's parameters with quality close to full fine-tuning."
+    },
+    "common_mistakes": [
+      "Assuming LoRA is always worse than full fine-tuning: for most tasks, LoRA matches full fine-tuning quality at a fraction of the cost.",
+      "Forgetting that LoRA requires the base model: at inference, you need the base model plus the LoRA adapter, or you need to merge them.",
+      "Using RLHF when simpler methods suffice: RLHF is expensive. Supervised fine-tuning is often enough for style and behaviour.",
+      "Ignoring the reward model's failure modes: a reward model trained on a biased dataset will teach the model to produce biased output."
+    ],
+    "real_world_usage": "LoRA is used to fine-tune almost every open-source model today (Llama, Mistral, Qwen). Hugging Face's PEFT library is the standard implementation. Instruction tuning is used by every chat model (ChatGPT, Claude, Gemini, Llama-Chat). RLHF was used to create ChatGPT and continues to be used alongside newer methods like DPO (Direct Preference Optimisation) and Constitutional AI. Every production LLM you use has been fine-tuned, instruction-tuned, and probably aligned with some form of human feedback.",
+    "key_takeaways": [
+      "PEFT methods train less than 1% of parameters with near-full quality.",
+      "LoRA adds low-rank trainable matrices to each layer, keeping the base frozen.",
+      "Instruction tuning teaches a base model to follow instructions.",
+      "RLHF aligns models with human preferences via a reward model.",
+      "Modern chat models are the result of fine-tuning + instruction tuning + RLHF."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "PEFT stands for Parameter-Efficient ___ Tuning.",
+      "options": ["Fine", "Fast", "Full"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "In LoRA, what gets trained?",
+      "choices": [
+        "The entire base model",
+        "Only the small adapter matrices A and B",
+        "Only the embedding layer"
+      ],
+      "correct_index": 1,
+      "reveal": "LoRA freezes the base model and trains only A and B — usually less than 1% of the parameters. This is why LoRA is so cheap."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What does RLHF use to decide which responses are better?",
+      "choices": [
+        "Random selection",
+        "A reward model trained on human preference comparisons",
+        "The model's own confidence scores"
+      ],
+      "correct_index": 1,
+      "reveal": "RLHF trains a reward model on human preferences (which response do you prefer?) and then uses that reward model to optimise the policy. This is what turned GPT-3 into ChatGPT."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# LoRA implementation\nclass LoRALinear:\n    def __init__(self, base, rank=8):\n        self.base = base\n        self.A = random_matrix(rank, base.in_dim)\n        self.B = random_matrix(base.out_dim, rank)\n        # base.weights are trainable\n        self.base.weights.requires_grad = True\n\n    def forward(self, x):\n        return self.base(x) + x @ self.A.T @ self.B.T",
+      "wrong_line": 6,
+      "explanation": "The base model's weights must be FROZEN in LoRA — that is the whole point. Line 6 sets requires_grad = True, which would train the full base model and lose all the memory and compute benefits of LoRA. It should be requires_grad = False."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain how LoRA reduces the cost of fine-tuning.",
+      "rubric": "Should mention that LoRA freezes the base model and adds small low-rank matrices to each layer that are the only trainable parameters. This dramatically reduces the number of parameters that must be updated and stored.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "LoRA adds low-rank matrices A and B to the base weight matrix W, giving an effective weight of W + ___.",
+      "options": ["BA", "AB", "A + B"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What is the typical trainable-parameter percentage for LoRA?",
+      "choices": [
+        "0.1% to 1%",
+        "50%",
+        "100%"
+      ],
+      "correct_index": 0,
+      "reveal": "LoRA typically trains 0.1-1% of the parameters — a tiny fraction of the base model — yet matches full fine-tuning quality on most tasks."
+    },
+    {
+      "type": "predict",
+      "question": "Why is instruction tuning needed on top of base language model training?",
+      "choices": [
+        "Base models do not follow instructions — they continue text instead",
+        "It reduces model size",
+        "It adds new vocabulary"
+      ],
+      "correct_index": 0,
+      "reveal": "A base model is trained to predict the next token, not to follow instructions. Instruction tuning teaches it to actually do what the prompt asks. This is what turned GPT-3 into ChatGPT."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Collect human demonstrations of good responses",
+        "Supervised fine-tune the model on these demonstrations",
+        "Collect human preference comparisons (which response is better?)",
+        "Train a reward model on the preference data",
+        "Optimise the policy via RL (PPO) to maximise reward"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why LoRA has become the default fine-tuning method for open models.",
+      "rubric": "Should mention that LoRA matches full fine-tuning quality on most tasks at a fraction of the compute and memory cost, and produces small adapter files that can be shared and combined.",
+      "min_words": 25
+    }
+  ]
+}

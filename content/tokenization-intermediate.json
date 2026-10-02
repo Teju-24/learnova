@@ -1,0 +1,156 @@
+{
+  "concept_slug": "tokenization",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Tokenization: BPE, Vocabulary, and Context Windows",
+    "summary": "Byte-Pair Encoding builds vocabularies from data. The tokenizer's choices affect model behaviour, cost, and multilingual performance.",
+    "learning_goals": [
+      "Understand how BPE builds a vocabulary",
+      "Read a BPE training step",
+      "Understand the trade-offs in vocabulary design",
+      "Recognise tokenizer-related model quirks"
+    ],
+    "long_intro": "Modern tokenizers are not hand-crafted — they are learned from data using algorithms like Byte-Pair Encoding (BPE). The algorithm starts with individual characters and repeatedly merges the most frequent adjacent pair into a new token. After thousands of merges, the vocabulary contains a mix of common full words, subword pieces, and single characters. Understanding BPE explains why LLMs split some words and not others, why they fail at character-level tasks, and why tokenizers are chosen with care in production systems.",
+    "deep_explanation": [
+      {
+        "heading": "Byte-Pair Encoding",
+        "body": "BPE starts with a vocabulary of single characters. It scans the training corpus and finds the most frequent adjacent pair of symbols. It merges that pair into a new symbol and adds it to the vocabulary. It repeats this many thousands of times. After training, common sequences like 'th' and 'the' become single tokens, while rare combinations remain split. The final vocabulary contains a mix of lengths — some tokens are full words, many are subword fragments.",
+        "code": "# Simplified BPE merge step\ndef most_frequent_pair(corpus):\n    counts = {}\n    for word in corpus:\n        for i in range(len(word) - 1):\n            pair = (word[i], word[i+1])\n            counts[pair] = counts.get(pair, 0) + 1\n    return max(counts, key=counts.get)\n\ncorpus = [\n    [\"l\", \"o\", \"w\"],\n    [\"l\", \"o\", \"w\", \"e\", \"r\"],\n    [\"n\", \"e\", \"w\"],\n    [\"w\", \"i\", \"d\", \"e\", \"s\", \"t\"],\n]\npair = most_frequent_pair(corpus)\nprint(f\"Most frequent pair: {pair}\")\n# ('l', 'o') likely — merge into a single token"
+      },
+      {
+        "heading": "Vocabulary size trade-off",
+        "body": "Smaller vocabularies (10K) mean fewer parameters and easier training, but longer token sequences (more compute per document). Larger vocabularies (200K) mean shorter sequences but more parameters and rarer tokens (which get less training signal). Modern LLMs use 50K-200K vocabularies — a middle ground. GPT-2 used 50K, GPT-3 and GPT-4 use ~100K, Claude and Gemini are similar. The choice affects multilingual performance: languages with non-Latin scripts often need more tokens per word if the vocabulary is dominated by English.",
+        "code": "# Rough token counts for the same idea in different languages\n# (approximate, using an English-dominant tokenizer)\nexamples = {\n    \"English: 'hello world'\": 2,\n    \"Spanish: 'hola mundo'\": 3,\n    \"Hindi: 'नमस्ते दुनिया'\": 8,\n    \"Japanese: 'こんにちは世界'\": 6,\n    \"Chinese: '你好世界'\": 5,\n}\nfor text, count in examples.items():\n    print(f\"  {text}: ~{count} tokens\")"
+      },
+      {
+        "heading": "Why the model fails at character tasks",
+        "body": "LLMs see tokens, not characters. When you ask 'how many r\\'s in strawberry?', the model does not see s-t-r-a-w-b-e-r-r-y. It sees tokens like ['straw', 'berry'] or ['str', 'aw', 'berry']. The letter r is hidden inside the tokens. This is why LLMs are notoriously bad at counting letters, reversing strings, and character-level manipulation. They can be worked around with tool use (calling a Python interpreter) or by spelling words out character by character in the prompt.",
+        "code": "# Why character tasks fail\ntext = \"strawberry\"\n# What the model sees:\n# ['straw', 'berry']  OR  ['str', 'aw', 'berry']\n# not: ['s', 't', 'r', 'a', 'w', 'b', 'e', 'r', 'r', 'y']\n\n# Counting the letter 'r' by characters:\nprint(f\"'r' count in strawberry: {text.count('r')}\")   # 3\n\n# The model has no direct access to characters."
+      },
+      {
+        "heading": "Practical tokenizer considerations",
+        "body": "Three considerations for real systems. First, token efficiency: if your domain has specialised vocabulary (medical, legal, code), a general tokenizer will use more tokens per word than a domain-specific one. Second, cost: since pricing is per token, a tokenizer that is 20% more efficient is a 20% cost reduction. Third, multilingual support: if your users speak multiple languages, test token counts per language before committing. Modern providers offer multilingual tokenizers optimised for this.",
+        "code": "# Cost comparison: efficient vs inefficient tokenizer\nwords = 1_000_000\ntokens_efficient   = int(words * 1.1)\ntokens_inefficient = int(words * 1.5)\n\nprice_per_million = 0.50   # input tokens\ncost_eff = tokens_efficient / 1_000_000 * price_per_million\ncost_ineff = tokens_inefficient / 1_000_000 * price_per_million\n\nprint(f\"Efficient:   ${cost_eff:.2f}\")\nprint(f\"Inefficient: ${cost_ineff:.2f}\")\nprint(f\"Savings:     ${cost_ineff - cost_eff:.2f}\")"
+      }
+    ],
+    "formal_definition": "Byte-Pair Encoding (BPE) builds a subword vocabulary by iteratively merging the most frequent adjacent symbol pair in a training corpus. Starting from characters, BPE produces a fixed vocabulary of size V after V - |initial| merge operations. Tokenizers are trained once and then frozen; they are used during both training and inference to convert text to token IDs. Common tokenizers include GPT-2 BPE, GPT-4 cl100k/o200k, Llama's SentencePiece, and Claude's tokenizer.",
+    "code_example": {
+      "language": "python",
+      "code": "# A minimal BPE trainer\ndef train_bpe(corpus, num_merges=10):\n    # Initialize vocabulary with characters\n    vocab = set()\n    for word in corpus:\n        for c in word:\n            vocab.add(c)\n    \n    words = [list(w) for w in corpus]\n    merges = []\n\n    for _ in range(num_merges):\n        counts = {}\n        for w in words:\n            for i in range(len(w) - 1):\n                pair = (w[i], w[i+1])\n                counts[pair] = counts.get(pair, 0) + 1\n        \n        if not counts:\n            break\n        pair = max(counts, key=counts.get)\n        merges.append(pair)\n        \n        # Apply the merge\n        new_words = []\n        for w in words:\n            new_w = []\n            i = 0\n            while i < len(w):\n                if i < len(w) - 1 and (w[i], w[i+1]) == pair:\n                    new_w.append(w[i] + w[i+1])\n                    i += 2\n                else:\n                    new_w.append(w[i])\n                    i += 1\n            new_words.append(new_w)\n        words = new_words\n    \n    return merges, words\n\ncorpus = [\"low\", \"lower\", \"newest\", \"widest\"]\nmerges, final = train_bpe(corpus, num_merges=5)\nprint(\"Merges:\", merges)\nprint(\"Final words:\", final)",
+      "universal_explanation": "Starting from characters, BPE repeatedly finds the most frequent adjacent pair and merges it. After a few merges, common pairs like ('e','s') or ('l','o') become single tokens. After thousands of merges, the vocabulary contains a rich mix of common full words and subword pieces — the same tokens a real model uses."
+    },
+    "common_mistakes": [
+      "Thinking tokenizers can be replaced without retraining the model: the model's embedding layer is indexed by token IDs, so a new tokenizer requires a new model.",
+      "Ignoring token inefficiency in production: two tokenizers with 20% difference in token count translate to 20% difference in cost.",
+      "Assuming all English words are single tokens: only common words are. Rare or long words get split.",
+      "Expecting the model to count letters or reverse strings reliably: it cannot, because it sees tokens, not characters."
+    ],
+    "real_world_usage": "OpenAI's tiktoken library provides the exact tokenizers used by GPT-3.5, GPT-4, and GPT-4o. Anthropic's Claude uses a different tokenizer, so token counts from one provider are not valid for another. Hugging Face's tokenizers library supports training custom BPE or SentencePiece tokenizers for domain-specific models. When you fine-tune a model, the tokenizer is fixed and cannot change. When building a multilingual app, always measure token counts per target language.",
+    "key_takeaways": [
+      "BPE builds vocabularies by iteratively merging the most frequent pairs.",
+      "Vocabulary size trades off sequence length against parameter count.",
+      "Different languages have very different token-to-word ratios.",
+      "Character-level tasks fail because models see tokens, not characters.",
+      "Tokenizer choice affects cost, model behaviour, and multilingual support."
+    ],
+    "estimated_minutes": 11
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "BPE stands for Byte-Pair ___.",
+      "options": ["Encoding", "Estimation", "Extraction"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A tokenizer with a smaller vocabulary (10K) produces:",
+      "choices": [
+        "Shorter token sequences (fewer tokens per sentence)",
+        "Longer token sequences (more tokens per sentence)",
+        "The same length as any other tokenizer"
+      ],
+      "correct_index": 1,
+      "reveal": "Smaller vocabularies force more subword splits, producing longer sequences. Larger vocabularies let more words be single tokens, giving shorter sequences."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why do LLMs struggle with 'How many r\\'s in strawberry?'",
+      "choices": [
+        "They don't care about spelling",
+        "The tokens don't expose individual characters to the model",
+        "They have never seen the word 'strawberry'"
+      ],
+      "correct_index": 1,
+      "reveal": "The model sees 'straw' and 'berry' as tokens, not individual letters. Counting characters requires character-level access the model doesn't have."
+    }},
+    { "type": "section", "section_id": "code_example" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Counting tokens for a Hindi sentence\ntext = \"नमस्ते दुनिया\"\ntokens = len(text.split())   # split on whitespace\nprint(f\"Tokens: {tokens}\")",
+      "wrong_line": 3,
+      "explanation": "Splitting on whitespace counts words, not tokens. For Hindi (or any non-Latin script) with an English-dominant tokenizer, the actual token count would be 2-4x higher because the tokenizer splits each word into many subword pieces. Use a real tokenizer for accurate counts."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why two different LLM providers might charge different amounts for the same text.",
+      "rubric": "Should mention that each provider uses a different tokenizer with different vocabulary sizes and rules, so the same text can be split into different numbers of tokens.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "BPE merges the most frequent adjacent ___ during training.",
+      "options": ["pair", "word", "letter"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which would produce the SHORTEST token sequence for a text in Hindi?",
+      "choices": [
+        "An English-dominant tokenizer",
+        "A multilingual tokenizer with Hindi in its training data",
+        "A character-level tokenizer"
+      ],
+      "correct_index": 1,
+      "reveal": "A multilingual tokenizer that has seen Hindi during training will have subword pieces for common Hindi sequences, so it produces far fewer tokens than an English-dominant tokenizer."
+    },
+    {
+      "type": "predict",
+      "question": "Why can't you simply swap the tokenizer of a trained model with a new one?",
+      "choices": [
+        "The model's embedding layer is indexed by the old token IDs",
+        "Tokenizers are protected by copyright",
+        "It is possible and requires no changes"
+      ],
+      "correct_index": 0,
+      "reveal": "The model's embedding table has one row per token in the original vocabulary. A new tokenizer changes the vocabulary and the IDs, so the embeddings become meaningless."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Start with a vocabulary of single characters",
+        "Scan the corpus for the most frequent adjacent pair",
+        "Merge that pair into a new symbol and add it to the vocabulary",
+        "Repeat for a fixed number of merges",
+        "Freeze the vocabulary and use it for encoding text"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why character-level tasks like reversing a string are hard for LLMs.",
+      "rubric": "Should mention that the model sees tokens, not individual characters, so it has no direct access to the sequence of characters within a token.",
+      "min_words": 20
+    }
+  ]
+}

@@ -6,19 +6,33 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "seed": "tsx scripts/seed-curriculum.ts",
+    "seed:content": "tsx scripts/generate-content.ts",
+    "seed:interactions": "tsx scripts/generate-interactions.ts",
+    "seed:deep": "tsx scripts/regenerate-deep-content.ts",
+    "seed:manual": "tsx scripts/seed-manual-content.ts",
+    "seed:personas": "tsx scripts/seed-personas.ts"
   },
   "dependencies": {
+    "@supabase/ssr": "^0.12.7",
+    "@supabase/supabase-js": "^2.117.2",
+    "framer-motion": "^13.4.6",
+    "groq-sdk": "^1.6.0",
+    "lucide-react": "^1.49.0",
+    "next": "14.2.35",
     "react": "^18",
     "react-dom": "^18",
-    "next": "14.2.35"
+    "zod": "^4.6.5"
   },
   "devDependencies": {
-    "typescript": "^5",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",
+    "dotenv": "^18.0.4",
     "postcss": "^8",
-    "tailwindcss": "^3.4.1"
+    "tailwindcss": "^3.4.1",
+    "tsx": "^4.23.15",
+    "typescript": "^5"
   }
 }

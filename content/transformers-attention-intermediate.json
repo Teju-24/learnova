@@ -1,0 +1,156 @@
+{
+  "concept_slug": "transformers-attention",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Transformers: Multi-Head Attention and Architecture",
+    "summary": "Multi-head attention lets transformers capture different relationships in parallel. Here is how a transformer block is structured and why it works.",
+    "learning_goals": [
+      "Understand multi-head attention",
+      "Read the full transformer block (attention + feedforward + residuals)",
+      "Understand positional encoding",
+      "See the difference between encoder, decoder, and encoder-decoder architectures"
+    ],
+    "long_intro": "You know that attention lets each token look at every other token. But a single attention operation can only capture one type of relationship at a time. To capture many types simultaneously — grammar, syntax, coreference, semantics — transformers use multi-head attention: several attention operations in parallel, each with its own learned projection. The outputs are concatenated and combined. Add a feedforward layer, residual connections, and layer normalisation, and you get a transformer block. Stack 12, 24, or 96 of them, and you have GPT-4, Claude, or Gemini. This lesson shows what one block actually contains and why it is designed this way.",
+    "deep_explanation": [
+      {
+        "heading": "Multi-head attention",
+        "body": "Instead of one attention operation, run several in parallel, each with its own Q, K, V projection matrices. Head 1 might learn syntactic relationships (subject-verb), head 2 might learn positional patterns, head 3 might learn coreference (what 'it' refers to). The outputs of all heads are concatenated and passed through a final linear layer. In practice, transformers use 8 to 96 heads. Multi-head attention gives the model multiple 'views' of the input at once.",
+        "code": "# Multi-head attention (conceptual)\ndef attention(q, k, v):\n    import math\n    scores = [sum(q[i] * k[i] for i in range(len(q)))]\n    return v  # placeholder\n\ndef multi_head_attention(X, num_heads=4):\n    # Each head has its own Q, K, V projections\n    # In practice these are learned linear layers\n    head_outputs = []\n    for h in range(num_heads):\n        # Q_h = X @ W_q[h], etc.\n        out = attention(X, X, X)\n        head_outputs.append(out)\n    # Concatenate and project\n    return head_outputs\n\nprint(f\"Multi-head: {4} attention operations in parallel\")"
+      },
+      {
+        "heading": "The transformer block",
+        "body": "A transformer block has two sublayers: multi-head attention and a feedforward network (two linear layers with a nonlinearity). Each sublayer is wrapped in a residual connection (add the input back to the output) and layer normalisation. Residual connections help gradients flow through deep stacks; layer norm stabilises training. This block is repeated N times — usually 12 (small models) up to 96 (GPT-3) or more (GPT-4). Larger models have more layers, more heads, and wider layers.",
+        "code": "# Transformer block (pseudo-code)\n# x = input\n# attn_out = multi_head_attention(layer_norm(x))\n# x = x + attn_out                     # residual\n# ff_out = feedforward(layer_norm(x))\n# x = x + ff_out                       # residual\n# return x\n\nprint(\"Block = attention → add → feedforward → add\")\nprint(\"Stack N blocks for a full transformer.\")"
+      },
+      {
+        "heading": "Positional encoding",
+        "body": "Attention treats the input as a set — it has no inherent notion of order. But word order matters ('dog bites man' vs 'man bites dog'). To inject position information, transformers add a positional encoding to each token's embedding before the first block. The encoding is either fixed (sinusoidal, from the original paper) or learned (a vector per position). Without positional encoding, transformers would treat a sentence as a bag of words.",
+        "code": "import math\n\ndef sinusoidal_positional_encoding(position, dim):\n    pe = []\n    for i in range(dim):\n        if i % 2 == 0:\n            pe.append(math.sin(position / (10000 ** (i / dim))))\n        else:\n            pe.append(math.cos(position / (10000 ** ((i - 1) / dim))))\n    return pe\n\nfor pos in [0, 1, 2]:\n    enc = sinusoidal_positional_encoding(pos, 4)\n    print(f\"pos {pos}: {[round(x, 3) for x in enc]}\")"
+      },
+      {
+        "heading": "Encoder, decoder, and encoder-decoder",
+        "body": "Transformers come in three flavors. Encoder-only models (BERT) use bidirectional attention — every token sees every other token. They are used for classification and embeddings. Decoder-only models (GPT, Claude, Llama) use causal attention — each token attends only to previous tokens. They generate text one token at a time. Encoder-decoder models (T5, original transformer) have both, used for translation and summarisation. Modern LLMs are almost all decoder-only.",
+        "code": "# Three transformer variants\nvariants = {\n    \"Encoder-only (BERT)\":       \"bidirectional, good for classification\",\n    \"Decoder-only (GPT, Claude)\": \"causal, good for generation\",\n    \"Encoder-decoder (T5)\":       \"both, good for translation\",\n}\n\nfor name, desc in variants.items():\n    print(f\"{name}: {desc}\")"
+      }
+    ],
+    "formal_definition": "A transformer block consists of multi-head self-attention followed by a position-wise feedforward network, each wrapped with a residual connection and layer normalisation: x' = x + MHA(LN(x)); x'' = x' + FFN(LN(x')). Multi-head attention projects inputs into h parallel (Q, K, V) triples via learned linear maps, applies scaled dot-product attention to each, and concatenates the outputs. Positional encodings are added to input embeddings to preserve order information. Encoder-only, decoder-only, and encoder-decoder variants differ in their attention masking and purpose.",
+    "code_example": {
+      "language": "python",
+      "code": "import math\n\ndef softmax(xs):\n    exps = [math.exp(x) for x in xs]\n    total = sum(exps)\n    return [e / total for e in exps]\n\ndef scaled_dot_product_attention(Q, K, V):\n    d_k = len(Q[0]) if Q else 1\n    # Compute attention scores\n    scores = []\n    for q in Q:\n        row = [sum(q[i] * k[i] for i in range(len(q))) / math.sqrt(d_k) for k in K]\n        scores.append(row)\n    # Softmax each row\n    weights = [softmax(row) for row in scores]\n    # Weighted sum of values\n    out = []\n    for w_row in weights:\n        new_v = [0.0] * len(V[0])\n        for w, v in zip(w_row, V):\n            for i in range(len(v)):\n                new_v[i] += w * v[i]\n        out.append(new_v)\n    return out\n\nQ = [[1.0, 0.0], [0.0, 1.0]]\nK = [[1.0, 0.0], [0.0, 1.0]]\nV = [[1.0, 0.0], [0.0, 1.0]]\n\nresult = scaled_dot_product_attention(Q, K, V)\nfor i, r in enumerate(result):\n    print(f\"token {i}: {[round(x, 3) for x in r]}\")",
+      "universal_explanation": "This is the core operation of every transformer. Q, K, V matrices are computed from the input, scaled by 1/sqrt(d_k), softmax'd to attention weights, and used to weight V. Every transformer layer, every attention head, every language model — GPT, Claude, Gemini — uses this operation millions of times per second."
+    },
+    "common_mistakes": [
+      "Forgetting the 1/sqrt(d_k) scaling: without it, dot products become too large and softmax saturates, preventing learning.",
+      "Assuming all attention is causal: only decoder models use causal masking. Encoder models (BERT) use full bidirectional attention.",
+      "Skipping positional encoding: without it, transformers cannot distinguish word order.",
+      "Thinking multi-head attention is much more expensive than single-head: total compute is similar because each head has a smaller dimension; the split is about diversity, not capacity."
+    ],
+    "real_world_usage": "Every modern LLM is built from stacked transformer blocks. GPT-3 has 96 layers, 96 heads per layer, and 175B parameters. GPT-4 has more. Claude, Gemini, Llama use similar architectures with variations. The transformer block is the fundamental unit that has scaled to billions of parameters and produced the current generation of AI. Understanding it is understanding the substrate of modern AI.",
+    "key_takeaways": [
+      "Multi-head attention runs several attention operations in parallel, capturing different relationships.",
+      "A transformer block is attention + feedforward + residuals + layer norm.",
+      "Positional encoding injects word-order information.",
+      "Encoder-only, decoder-only, and encoder-decoder variants serve different purposes.",
+      "Stacking transformer blocks gives large language models."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Multi-head attention runs several attention operations in ___.",
+      "options": ["parallel", "sequence", "reverse"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What does the residual connection in a transformer block accomplish?",
+      "choices": [
+        "Reverses the attention weights",
+        "Adds the input back to the output, helping gradients flow through deep stacks",
+        "Doubles the parameters"
+      ],
+      "correct_index": 1,
+      "reveal": "Residual connections add the input to the output of the sublayer. They make gradients flow more easily through very deep networks, preventing vanishing gradients."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "GPT, Claude, and Llama are which type of transformer?",
+      "choices": [
+        "Encoder-only",
+        "Decoder-only",
+        "Encoder-decoder"
+      ],
+      "correct_index": 1,
+      "reveal": "Modern LLMs are decoder-only. They use causal masking (each token attends only to previous tokens) and generate text left to right."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "import math\n\ndef attention_scores(q, k):\n    return sum(q[i] * k[i] for i in range(len(q)))\n\ndef scaled_attention(Q, K):\n    d_k = len(Q[0])\n    scores = [[attention_scores(q, k) for k in K] for q in Q]\n    # Missing the scaling step\n    return scores\n\nQ = [[1.0, 2.0, 3.0]]\nK = [[1.0, 2.0, 3.0]]\nprint(scaled_attention(Q, K))",
+      "wrong_line": 8,
+      "explanation": "The scores are not divided by sqrt(d_k). Without this scaling, the dot products grow with dimension, pushing softmax into saturated regions where gradients vanish. The correct code divides each score by math.sqrt(d_k)."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what multi-head attention is and why it helps.",
+      "rubric": "Should mention that multiple attention heads run in parallel with their own Q/K/V projections, so different heads can learn different kinds of relationships (syntax, semantics, coreference). The outputs are concatenated.",
+      "min_words": 30
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Transformer blocks use residual connections and layer ___ to stabilise deep training.",
+      "options": ["normalisation", "multiplication", "dropout"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What is added to token embeddings to give transformers information about word order?",
+      "choices": [
+        "Batch normalisation",
+        "Positional encoding",
+        "Attention mask"
+      ],
+      "correct_index": 1,
+      "reveal": "Positional encodings are added to token embeddings before the first transformer block. They encode each token's position, which attention itself does not capture."
+    },
+    {
+      "type": "predict",
+      "question": "Why is the attention score divided by sqrt(d_k)?",
+      "choices": [
+        "To make numbers smaller for readability",
+        "To prevent dot products from becoming too large and saturating softmax",
+        "To match the vocabulary size"
+      ],
+      "correct_index": 1,
+      "reveal": "Without scaling, dot products grow with dimension. Large scores push softmax into saturated regions where gradients vanish, preventing learning."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Project input tokens into Q, K, V matrices",
+        "Compute scaled dot-product attention for each head",
+        "Concatenate outputs of all heads and apply output projection",
+        "Add residual connection and layer normalisation",
+        "Pass through the feedforward network with another residual"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain the difference between encoder-only and decoder-only transformers.",
+      "rubric": "Should mention that encoder-only models (BERT) use bidirectional attention and are good for classification, while decoder-only models (GPT, Claude) use causal masking and generate text token by token.",
+      "min_words": 25
+    }
+  ]
+}

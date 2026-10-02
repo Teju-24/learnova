@@ -1,0 +1,161 @@
+{
+  "concept_slug": "embeddings",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Embeddings: How They Are Learned and Used",
+    "summary": "Embeddings are not hand-crafted — they are learned by training. Contrastive learning, similarity metrics, and vector databases make them the backbone of modern AI search.",
+    "learning_goals": [
+      "Understand how embeddings are trained via contrastive loss",
+      "Read and compute cosine similarity and Euclidean distance",
+      "Understand vector databases and approximate nearest neighbour search",
+      "See how embeddings power RAG and semantic search"
+    ],
+    "long_intro": "You know what embeddings are: dense vectors where similar meanings end up close together. This lesson goes deeper into three questions. First, how are embeddings trained? The answer is contrastive learning — showing the model pairs that should be close and pairs that should be far, and adjusting the embeddings until the distances match. Second, how do we measure similarity? Cosine similarity and Euclidean distance are the two standards. Third, how do real systems use embeddings at scale? Vector databases store millions of embeddings and answer nearest-neighbour queries in milliseconds. This is what makes semantic search and RAG possible.",
+    "deep_explanation": [
+      {
+        "heading": "Contrastive learning: how embeddings are trained",
+        "body": "Embeddings are learned by pulling similar items closer together and pushing dissimilar ones apart. During training, the model sees a batch of (anchor, positive, negative) triples. The anchor and positive should have similar embeddings; the anchor and negative should have dissimilar embeddings. The loss function penalises similarity between anchor and negative, and rewards similarity between anchor and positive. Over many batches, the model learns embeddings where meaning is faithfully encoded in geometry.",
+        "code": "# Triplet loss (simplified)\nimport math\n\ndef distance(a, b):\n    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))\n\ndef triplet_loss(anchor, positive, negative, margin=0.2):\n    pos_dist = distance(anchor, positive)\n    neg_dist = distance(anchor, negative)\n    return max(0.0, pos_dist - neg_dist + margin)\n\nanchor = [0.5, 0.5]\npos    = [0.6, 0.55]\nneg    = [0.1, 0.9]\n\nprint(f\"triplet loss: {triplet_loss(anchor, pos, neg):.4f}\")\nprint(\"Goal: make pos_dist small and neg_dist large\")"
+      },
+      {
+        "heading": "Cosine similarity vs Euclidean distance",
+        "body": "Two metrics dominate embedding comparison. Cosine similarity measures the angle between vectors, ignoring their lengths — it is best when direction matters more than magnitude. Euclidean distance measures the straight-line distance — it is best when you care about actual closeness in space. In modern NLP, cosine similarity is the default because embeddings are often normalised, and the angle between them is what encodes semantic similarity. In image retrieval, Euclidean distance is often used because the magnitude carries signal.",
+        "code": "import math\n\ndef cosine(a, b):\n    dot = sum(x * y for x, y in zip(a, b))\n    ma = math.sqrt(sum(x * x for x in a))\n    mb = math.sqrt(sum(x * x for x in b))\n    return dot / (ma * mb)\n\ndef euclidean(a, b):\n    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))\n\na = [1.0, 0.0, 0.0]\nb = [2.0, 0.0, 0.0]   # same direction, different magnitude\n\nprint(f\"cosine: {cosine(a, b):.3f}\")      # 1.0 (identical direction)\nprint(f\"euclidean: {euclidean(a, b):.3f}\")   # 1.0 (different magnitude)"
+      },
+      {
+        "heading": "Vector databases and ANN search",
+        "body": "Storing embeddings is easy — a database table with a vector column. Searching them is the hard part. For a query embedding, you want the K most similar embeddings in a corpus of millions. Doing an exhaustive comparison is too slow. Vector databases use approximate nearest neighbour (ANN) algorithms like HNSW (Hierarchical Navigable Small World) or IVF (Inverted File Index) to find near-neighbours in sublinear time. The trade-off is a small probability of missing the true nearest neighbour. For most search tasks, this is completely acceptable.",
+        "code": "# Conceptual vector search\nquery = [0.9, 0.1, 0.0]\ndatabase = {\n    \"doc_a\": [0.85, 0.15, 0.0],\n    \"doc_b\": [0.1, 0.9, 0.0],\n    \"doc_c\": [0.8, 0.2, 0.05],\n    \"doc_d\": [0.0, 0.0, 1.0],\n}\n\nimport math\ndef cosine(a, b):\n    d = sum(x * y for x, y in zip(a, b))\n    ma = math.sqrt(sum(x * x for x in a))\n    mb = math.sqrt(sum(x * x for x in b))\n    return d / (ma * mb)\n\nresults = sorted(\n    ((name, cosine(query, emb)) for name, emb in database.items()),\n    key=lambda x: -x[1]\n)\n\nfor name, score in results:\n    print(f\"{name}: {score:.3f}\")"
+      },
+      {
+        "heading": "RAG: retrieval-augmented generation",
+        "body": "RAG is the most important application of embeddings in modern AI. The idea: when a user asks a question, do not rely on the model's training data alone. Instead, embed the query, search a vector database of documents, retrieve the top-K most relevant passages, and give them to the language model as context. The model then generates its answer grounded in those passages. RAG dramatically improves accuracy on domain-specific questions and reduces hallucination. Every enterprise AI system built in the last three years uses some form of RAG.",
+        "code": "# RAG pipeline (conceptual)\ndef rag_answer(user_query, vector_db, llm, top_k=3):\n    # 1. Embed the query\n    query_embedding = embed(user_query)\n    \n    # 2. Retrieve top-K documents\n    docs = vector_db.search(query_embedding, top_k=top_k)\n    \n    # 3. Build a prompt with retrieved context\n    context = \"\\n\\n\".join(d.text for d in docs)\n    prompt = f\"Context:\\n{context}\\n\\nQuestion: {user_query}\"\n    \n    # 4. Generate an answer\n    return llm.generate(prompt)\n\nprint(\"RAG = embed → search → augment → generate\")"
+      }
+    ],
+    "formal_definition": "An embedding is a learned function f: X → R^n mapping inputs to dense vectors such that semantic similarity in X corresponds to vector proximity in R^n. Contrastive learning trains f by minimizing a loss that pulls positive pairs together and pushes negative pairs apart — common losses include triplet loss and InfoNCE. Similarity is measured by cosine similarity (a·b)/(|a||b|) or Euclidean distance |a-b|. Vector databases with approximate nearest neighbour algorithms (HNSW, IVF) enable sublinear-time retrieval over millions of embeddings.",
+    "code_example": {
+      "language": "python",
+      "code": "import math\nimport numpy as np\n\ndef cosine_similarity_matrix(A, B):\n    \"\"\"Compute pairwise cosine similarity between rows of A and B.\"\"\"\n    A_norm = A / np.linalg.norm(A, axis=1, keepdims=True)\n    B_norm = B / np.linalg.norm(B, axis=1, keepdims=True)\n    return A_norm @ B_norm.T\n\n# 3 documents, 4-dim embeddings\ncorpus = np.array([\n    [0.9, 0.1, 0.0, 0.2],   # doc about cats\n    [0.85, 0.15, 0.05, 0.1],# doc about kittens\n    [0.0, 0.1, 0.9, 0.8],   # doc about finance\n])\n\nquery = np.array([[0.88, 0.12, 0.02, 0.15]])\n\nsims = cosine_similarity_matrix(query, corpus)[0]\nfor i, s in enumerate(sims):\n    print(f\"doc {i}: similarity {s:.3f}\")",
+      "universal_explanation": "The query embedding is close to documents 0 and 1 (which are about cats/kittens) and far from document 2 (about finance). A search system would return documents 0 and 1 as the most relevant. This is the entire principle behind semantic search."
+    },
+    "common_mistakes": [
+      "Mixing embeddings from different models: an embedding trained by model A is not comparable to one trained by model B, even if both have the same dimension.",
+      "Forgetting to normalise before computing cosine similarity: many libraries expect normalised vectors, and some compute dot product as a proxy for cosine similarity — only valid if vectors are unit length.",
+      "Using the wrong distance metric: cosine for direction, Euclidean for magnitude. Pick based on what matters for your task.",
+      "Ignoring ANN approximation error: approximate nearest neighbour indexes are fast but not exact. For small corpora (<10k items), exhaustive search may be faster and gives exact results."
+    ],
+    "real_world_usage": "OpenAI, Anthropic, and Google all offer embedding APIs (text-embedding-3-small, Voyage, Gemini embeddings). Pinecone, Weaviate, Qdrant, Chroma, and pgvector are production vector databases. Every enterprise RAG system — from customer support bots to legal research tools — uses this exact stack: embed documents, store in vector DB, embed query, retrieve nearest neighbours, augment LLM prompt. Even Google Search has moved toward embedding-based retrieval for semantic matching.",
+    "key_takeaways": [
+      "Embeddings are learned via contrastive losses that pull similar items together.",
+      "Cosine similarity measures direction; Euclidean distance measures actual closeness.",
+      "Vector databases with ANN indexes enable million-scale retrieval in milliseconds.",
+      "RAG combines retrieval with generation for grounded, accurate answers.",
+      "Embeddings are the foundation of modern search and recommendation."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Contrastive learning trains embeddings by pulling ___ pairs closer and pushing dissimilar pairs apart.",
+      "options": ["similar", "random", "identical"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Write a function called dot_product that takes two lists of numbers and returns their dot product (sum of element-wise products). Test it by calling dot_product([1, 2, 3], [4, 5, 6]) and printing the result. The expected output is 32.",
+      "starter_code": "def dot_product(a, b):\n    # Your code here\n    pass\n\nprint(dot_product([1, 2, 3], [4, 5, 6]))\n",
+      "reference_code": "def dot_product(a, b):\n    total = 0\n    for i in range(len(a)):\n        total += a[i] * b[i]\n    return total\n\nprint(dot_product([1, 2, 3], [4, 5, 6]))",
+      "rubric": "The function should iterate through both lists, multiply corresponding elements, sum them, and return the total. Correct output when called with [1,2,3] and [4,5,6] should be 32. A simpler implementation using zip is also acceptable.",
+      "language": "python",
+      "min_lines": 4
+    }},
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Vectors a=[1, 0] and b=[3, 0] point in the same direction. Which metric will say they are most similar?",
+      "choices": [
+        "Euclidean distance",
+        "Cosine similarity",
+        "Both agree"
+      ],
+      "correct_index": 1,
+      "reveal": "Cosine similarity is 1.0 (identical direction), while Euclidean distance is 2.0 (they differ in magnitude). Cosine ignores magnitude, so it treats them as maximally similar."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You have 100 million document embeddings. Exhaustive search per query is too slow. What should you use?",
+      "choices": [
+        "A relational database with LIKE queries",
+        "An approximate nearest neighbour index (HNSW or IVF)",
+        "A Python list and cosine similarity loop"
+      ],
+      "correct_index": 1,
+      "reveal": "ANN indexes (HNSW, IVF) return approximate nearest neighbours in sublinear time, making million-scale search practical. Exact search is only feasible for small corpora."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "import numpy as np\n\ndef similarity(query, doc):\n    return query @ doc     # raw dot product\n\nquery = np.array([1.0, 2.0])\ndoc = np.array([100.0, 200.0])\n\nprint(similarity(query, doc))",
+      "wrong_line": 4,
+      "explanation": "The function returns the raw dot product, not cosine similarity. Since doc has much larger magnitude than query, the dot product is huge — even though the two vectors point in the same direction and should have similarity 1.0. The function should normalise both vectors by their magnitudes first."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what RAG is and how embeddings make it possible.",
+      "rubric": "Should mention that RAG retrieves relevant documents from a corpus and passes them to the LLM as context. Embeddings enable retrieval by encoding queries and documents into the same vector space, where nearest-neighbour search finds relevant documents.",
+      "min_words": 30
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "RAG stands for Retrieval-___ Generation.",
+      "options": ["Augmented", "Automated", "Adaptive"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which similarity metric ignores the magnitude of vectors?",
+      "choices": ["Euclidean distance", "Cosine similarity", "Manhattan distance"],
+      "correct_index": 1,
+      "reveal": "Cosine similarity normalises by magnitude, so it only measures the angle between vectors — direction, not length."
+    },
+    {
+      "type": "predict",
+      "question": "A vector database uses an approximate nearest neighbour (ANN) index. What is the trade-off?",
+      "choices": [
+        "It is slower but exact",
+        "It is faster but may miss the true nearest neighbour",
+        "It uses more memory but never misses"
+      ],
+      "correct_index": 1,
+      "reveal": "ANN indexes are fast but approximate — they have a small probability of missing the true nearest neighbour. For most search tasks this trade-off is acceptable."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Embed all documents in the corpus and store them in a vector database",
+        "When a query arrives, embed the query with the same model",
+        "Compute similarity between the query embedding and all indexed embeddings",
+        "Return the top-K most similar documents",
+        "Pass the retrieved documents to the LLM as context for generation"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why embeddings from different models cannot be compared directly.",
+      "rubric": "Should mention that each model learns its own vector space, so the same concept may map to different coordinates. Similarity only makes sense within the embeddings produced by a single model.",
+      "min_words": 20
+    }
+  ]
+}

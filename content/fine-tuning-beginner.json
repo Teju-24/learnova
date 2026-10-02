@@ -1,0 +1,150 @@
+{
+  "concept_slug": "fine-tuning",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Fine-tuning: Teaching a Model Your Style",
+    "summary": "Fine-tuning takes a pretrained model and adjusts it on your specific data. It changes how the model behaves, not what it knows.",
+    "learning_goals": [
+      "Understand what fine-tuning is",
+      "See the difference between fine-tuning and prompting",
+      "Understand what fine-tuning is good for",
+      "Read a fine-tuning setup in code"
+    ],
+    "long_intro": "You have learned about prompting and RAG — two ways to get better output from a pretrained model without changing it. Fine-tuning is different: it actually modifies the model's weights by training on your specific data. This is how you teach a model your company's tone, a specific output format, or a specialised task. Fine-tuning is more expensive than prompting but much more powerful when you need the model to behave a certain way consistently. This lesson explains what fine-tuning is, when to use it, and how it works at a high level.",
+    "deep_explanation": [
+      {
+        "heading": "What fine-tuning is",
+        "body": "Fine-tuning takes a model that has already been trained on a massive corpus (like GPT or Llama) and trains it further on a smaller, focused dataset. The model's weights are adjusted to better match your examples. You are not starting from scratch — you are nudging a capable model toward your specific needs. Fine-tuning data is usually a few hundred to a few thousand examples, formatted as input-output pairs. The training is short (hours, not weeks) and cheap compared to pretraining.",
+        "code": "# Fine-tuning data format (JSONL)\nexamples = [\n    {\"input\": \"Summarise: 'The product arrived late and was damaged.'\",\n     \"output\": \"Negative: late delivery, damaged item.\"},\n    {\"input\": \"Summarise: 'Fast shipping, perfect condition.'\",\n     \"output\": \"Positive: fast, undamaged.\"},\n]\n\nfor ex in examples:\n    print(f\"IN:  {ex['input']}\")\n    print(f\"OUT: {ex['output']}\")\n    print()"
+      },
+      {
+        "heading": "Prompting vs fine-tuning",
+        "body": "When should you fine-tune instead of prompt? Prompting is cheap and instant. Use it when the task can be described in words: 'summarise this', 'classify this sentiment'. Fine-tuning is when prompting is not enough. Examples: the model needs to output a very specific JSON format every time; the model needs to match a specific tone that is hard to describe; the task is specialised (medical coding, legal citation) and the model underperforms on it; the task is repetitive and you want to reduce prompt size. Fine-tuning is for consistency and specialised behaviour.",
+        "code": "# When to prompt vs fine-tune\nprompt_task  = \"Summarise this paragraph\"                    # one-off, describable\nft_task      = \"Output medical codes in our specific format\"  # consistent, specialised\n\nprint(f\"Prompting: {prompt_task}\")\nprint(f\"Fine-tuning: {ft_task}\")"
+      },
+      {
+        "heading": "What fine-tuning does and does not do",
+        "body": "Fine-tuning teaches behaviour, not facts. It can teach the model to answer in a certain style, follow a specific format, or perform a specialised task. It does NOT reliably teach new facts — a fine-tuned model may still hallucinate about things it was not trained on. If you need the model to know facts, use RAG. If you need the model to behave a certain way, fine-tune. Many production systems combine both: a fine-tuned model that talks in the right style, plus RAG to give it accurate facts.",
+        "code": "# What fine-tuning does and does not do\ndoes = [\n    \"Match a specific tone or style\",\n    \"Follow a strict output format\",\n    \"Perform a specialised task better\",\n    \"Reduce prompt length for repetitive tasks\",\n]\n\ndoes_not = [\n    \"Reliably add new facts\",\n    \"Replace RAG for knowledge retrieval\",\n    \"Fix fundamental capability gaps\",\n]\n\nfor d in does:\n    print(f\"OK: {d}\")\nprint()\nfor d in does_not:\n    print(f\"NOT: {d}\")"
+      }
+    ],
+    "formal_definition": "Fine-tuning is the process of continuing training of a pretrained model on a smaller, task-specific dataset to adapt its behaviour, style, or task performance. It differs from pretraining (which learns general language) and from prompting (which steers a frozen model with instructions). Modern methods include full fine-tuning (all weights updated) and parameter-efficient methods (LoRA, adapters, prefix tuning) that train only a small fraction of parameters.",
+    "code_example": {
+      "language": "python",
+      "code": "# Conceptual fine-tuning loop\n# (pseudocode — real implementations use Hugging Face or OpenAI's API)\n\ndef fine_tune(base_model, training_data, epochs=3, lr=2e-5):\n    model = load(base_model)\n    optimizer = AdamW(model.parameters(), lr=lr)\n\n    for epoch in range(epochs):\n        for example in training_data:\n            input_ids = tokenize(example[\"input\"])\n            target_ids = tokenize(example[\"output\"])\n\n            predictions = model(input_ids)\n            loss = cross_entropy(predictions, target_ids)\n\n            optimizer.zero_grad()\n            loss.backward()\n            optimizer.step()\n\n    return model\n\nprint(\"Fine-tuning: continue training on task-specific data\")",
+      "universal_explanation": "The loop is the same as any neural network training: forward pass, loss, backward pass, optimizer step. The difference is that the model starts from pretrained weights and the dataset is small and focused. A few epochs on a few thousand examples is often enough."
+    },
+    "common_mistakes": [
+      "Fine-tuning to add facts: use RAG instead. Fine-tuning teaches behaviour, not reliable knowledge.",
+      "Using too small a dataset: fewer than a few hundred examples usually is not enough for meaningful fine-tuning.",
+      "Overfitting on small data: use a small learning rate, few epochs, and monitor validation loss.",
+      "Fine-tuning before trying prompting: always try prompting and RAG first. Fine-tuning is expensive and slower to iterate."
+    ],
+    "real_world_usage": "OpenAI, Anthropic, and Google all offer fine-tuning APIs for their models. Hugging Face provides infrastructure for fine-tuning open models (Llama, Mistral, Qwen). Companies fine-tune for: customer-specific tone and vocabulary, specialised classification, structured extraction, and domain-specific tasks like medical coding or legal citation. GPT-3.5 was famously fine-tuned to become the original ChatGPT — a fine-tuned version of a base model with reinforcement learning on top.",
+    "key_takeaways": [
+      "Fine-tuning continues training a pretrained model on your data.",
+      "It teaches behaviour, not facts — use RAG for factual knowledge.",
+      "It is more expensive than prompting but more consistent for specialised tasks.",
+      "Fine-tuning data is small: hundreds to thousands of examples.",
+      "Modern systems often combine fine-tuning with RAG."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Fine-tuning continues training of a ___ model on a small, focused dataset.",
+      "options": ["pretrained", "random", "compressed"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You want the model to output a very specific JSON format every time. What is the best approach?",
+      "choices": [
+        "Prompting with examples",
+        "Fine-tuning on examples of the exact format",
+        "Nothing — models cannot follow formats"
+      ],
+      "correct_index": 1,
+      "reveal": "Fine-tuning on many examples of the exact format teaches the model to produce it reliably. Prompting works for simple formats but breaks on complex or precise ones."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A company wants the model to know all their product names. Should they fine-tune or use RAG?",
+      "choices": [
+        "Fine-tune the model",
+        "Use RAG with a product catalogue",
+        "Both are equivalent"
+      ],
+      "correct_index": 1,
+      "reveal": "Product names are facts that change frequently. RAG is the right choice — the model looks up the current catalogue at query time. Fine-tuning for facts is unreliable and expensive to update."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Fine-tuning a classifier\n# Company wants a model that knows facts about their employees\n\nfine_tune_data = [\n    {\"input\": \"Who is the CEO?\", \"output\": \"Alice Johnson\"},\n    {\"input\": \"Who is the CTO?\", \"output\": \"Bob Smith\"},\n]\n# Fine-tune the model on this data\n\nprint(\"Fine-tune on facts\")",
+      "wrong_line": 6,
+      "explanation": "Fine-tuning on facts is the wrong approach — the model may memorise them loosely and will not reliably recite them. Also, when facts change (new CEO), you have to re-fine-tune. RAG is the correct approach: put employee information in a searchable knowledge base, and let the model look it up at query time."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain the difference between what prompting, RAG, and fine-tuning are each best for.",
+      "rubric": "Should say prompting is for tasks describable in words, RAG is for factual knowledge that changes, and fine-tuning is for consistent style, format, or specialised behaviour.",
+      "min_words": 30
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Fine-tuning is best for teaching a model ___ rather than facts.",
+      "options": ["behaviour", "dates", "data"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which is a GOOD use case for fine-tuning?",
+      "choices": [
+        "Adding today's stock prices",
+        "Teaching a model to write in a specific brand voice",
+        "Storing the company's entire employee directory"
+      ],
+      "correct_index": 1,
+      "reveal": "Brand voice is a behaviour — perfect for fine-tuning. Stock prices and directories are facts that change, so RAG is better."
+    },
+    {
+      "type": "predict",
+      "question": "Why is fine-tuning more expensive than prompting?",
+      "choices": [
+        "Prompts are stored on cheaper disks",
+        "Fine-tuning requires actual training — compute, time, and data preparation",
+        "Fine-tuning uses fewer tokens"
+      ],
+      "correct_index": 1,
+      "reveal": "Fine-tuning runs the training loop on the model. That requires compute time, curated data, and iteration. Prompting is instant."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Prepare a small dataset of input-output examples",
+        "Format the data in the required schema (JSONL)",
+        "Fine-tune the pretrained model on this dataset",
+        "Evaluate the fine-tuned model on held-out examples",
+        "Deploy the fine-tuned model and monitor for regressions"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why many production systems combine fine-tuning with RAG.",
+      "rubric": "Should mention that fine-tuning handles style/behaviour and RAG handles factual knowledge, so combining them gives a model that behaves correctly AND knows current facts.",
+      "min_words": 25
+    }
+  ]
+}

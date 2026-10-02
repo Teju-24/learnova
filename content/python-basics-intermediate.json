@@ -1,0 +1,151 @@
+{
+  "concept_slug": "python-basics",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Python Basics: Intermediate",
+    "summary": "Building on variables and arithmetic, this lesson introduces functions, loops, and lists — the three Python constructs that appear in every AI training loop.",
+    "learning_goals": [
+      "Write reusable functions with def and return",
+      "Iterate over sequences with for loops",
+      "Store collections of values with lists",
+      "Read a small gradient descent loop in Python"
+    ],
+    "long_intro": "You already know variables and arithmetic. Now it is time for the three constructs that turn small scripts into real programs: functions (reusable blocks of logic), for loops (repeating an action over a collection), and lists (holding many values in one variable). Every training loop you will ever read uses all three. The training loop takes a list of data points, iterates over them with a for loop, and calls a function to compute the loss and update the weights. Once you can read these three constructs, you can read most of the code in an intro AI course.",
+    "deep_explanation": [
+      {
+        "heading": "Functions: naming a computation",
+        "body": "A function is a named block of code that takes some inputs (arguments) and produces an output (the return value). You define one with def name(args): and you call it later with name(values). Functions are how you avoid writing the same logic over and over. In AI code, functions are everywhere: a loss function, a forward pass function, an optimizer step function. The point of a function is that once you have named the computation, you can call it wherever you need it — and you can test it in isolation.",
+        "code": "def double(x):\n    return x * 2\n\nresult = double(5)\nprint(result)   # shows 10"
+      },
+      {
+        "heading": "For loops: doing something many times",
+        "body": "A for loop runs a block of code once for each item in a sequence. The Python syntax is 'for item in sequence:'. On every iteration, the variable 'item' holds the next value from the sequence. This is how training loops iterate over data, how layers iterate over neurons, and how evaluation loops iterate over test examples. If you see 'for step in range(100):' in a tutorial, it means the code inside will run 100 times.",
+        "code": "for i in range(5):\n    print(i)\n\n# Prints 0, 1, 2, 3, 4 on separate lines"
+      },
+      {
+        "heading": "Lists: holding many values",
+        "body": "A list is an ordered collection of values. You write it with square brackets: [1, 2, 3] or ['a', 'b', 'c']. You can add to it with .append(), read the i-th element with list[i], and get the length with len(list). Lists are how you store a batch of training examples, the weights of a model, or the losses from each step. Everywhere you need to hold many values under one name, you use a list.",
+        "code": "losses = []\nfor step in range(5):\n    loss = 10 - step\n    losses.append(loss)\nprint(losses)   # shows [10, 9, 8, 7, 6]"
+      },
+      {
+        "heading": "Putting it together: a mini training loop",
+        "body": "Here is a tiny version of what a real training loop looks like. It has all the pieces you have learned: a function that computes something, a for loop that repeats, and a list that collects results. Real training loops are the same shape, just with more math inside the function and millions of iterations instead of five. When you read AI code, look for this shape and the rest becomes readable.",
+        "code": "def compute_loss(x):\n    return (x - 3) ** 2\n\nx = 0.0\nlearning_rate = 0.1\nlosses = []\n\nfor step in range(10):\n    loss = compute_loss(x)\n    losses.append(loss)\n    gradient = 2 * (x - 3)\n    x = x - learning_rate * gradient\n\nprint(\"final x:\", x)"
+      }
+    ],
+    "formal_definition": "A function is defined with def name(params): and returns a value with return. A for loop iterates over any iterable (list, range, string, etc.) and binds each element to a loop variable. A list is a mutable ordered sequence, created with [items] or list(), extended with .append(), indexed with [i], and measured with len().",
+    "code_example": {
+      "language": "python",
+      "code": "def average(numbers):\n    total = 0\n    for n in numbers:\n        total = total + n\n    return total / len(numbers)\n\nscores = [80, 90, 70]\nprint(average(scores))   # shows 80.0",
+      "universal_explanation": "The function takes a list of numbers, adds them one by one in a loop, and divides by the length to get the average. This same pattern appears inside every evaluation script in AI: iterate over results, sum them, divide by the count."
+    },
+    "common_mistakes": [
+      "Forgetting to return a value from a function: without return, the function produces None, and the caller gets nothing back.",
+      "Reusing the same variable name inside and outside a function without realizing they are different scopes: the a inside the function is not the same as the a outside it.",
+      "Off-by-one errors in range: range(5) produces 0, 1, 2, 3, 4 — it does not include 5. This trips up beginners constantly.",
+      "Mutating a list while iterating over it: adding or removing items during a for loop produces surprising behavior. Iterate over a copy or collect changes separately.",
+      "Calling a function before defining it: Python reads top to bottom, so the def must come before the call."
+    ],
+    "real_world_usage": "This is the exact shape of every training loop in AI. PyTorch's classic example loop reads: 'for epoch in range(num_epochs): for batch in dataloader: loss = compute_loss(model(batch)); loss.backward(); optimizer.step()'. That is a for loop iterating over a list (the dataloader), calling functions (model and compute_loss), and collecting results. Once you can read our mini version, you can read the real one.",
+    "key_takeaways": [
+      "Functions package logic under a name so it can be reused.",
+      "For loops repeat a block for each item in a sequence.",
+      "Lists hold many values under one name.",
+      "range(N) produces numbers 0 through N-1.",
+      "Every AI training loop is a for loop over a list calling functions."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Write a function called average that takes a list of numbers and returns their mean. Test it with [80, 90, 70] and print the result. The expected output is 80.0.",
+      "starter_code": "def average(numbers):\n    # Your code here\n    pass\n\nprint(average([80, 90, 70]))\n",
+      "reference_code": "def average(numbers):\n    total = 0\n    for n in numbers:\n        total = total + n\n    return total / len(numbers)\n\nprint(average([80, 90, 70]))",
+      "rubric": "The function should iterate over the list, sum the values, and divide by the length. It should return a float. The output for [80, 90, 70] should be 80.0. Using sum()/len() directly is also acceptable.",
+      "language": "python",
+      "min_lines": 4
+    }},
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "To define a function that adds two numbers, you write: ___ add(a, b):",
+      "options": ["def", "func", "function"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "How many times does the print run?\n\nfor i in range(3):\n    print(i)",
+      "choices": ["2 times", "3 times", "4 times"],
+      "correct_index": 1,
+      "reveal": "range(3) produces 0, 1, 2 — three values, so the loop runs three times."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "order_steps",
+      "items": [
+        "Start with total = 0",
+        "For each number in the list, add it to total",
+        "Divide total by the number of items",
+        "Return the result"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "def double(x):\n    x * 2\n\nresult = double(5)\nprint(result)",
+      "wrong_line": 2,
+      "explanation": "Line 2 computes x * 2 but does not return it. Without 'return x * 2', the function produces None, so 'result' will be None and the print will show None instead of 10."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, describe what a for loop does and give one example of where it appears in AI code.",
+      "rubric": "Should say a for loop repeats code for each item in a sequence, and give an example like iterating over training examples or over steps.",
+      "min_words": 20
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "To create an empty list called results, you write ___.",
+      "options": ["results = []", "results = {}", "results = ()"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What does this code print?\n\nx = 0\nfor i in range(3):\n    x = x + 2\nprint(x)",
+      "choices": ["2", "4", "6"],
+      "correct_index": 2,
+      "reveal": "The loop runs three times, each adding 2. Starting from 0, we get 0+2+2+2 = 6."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "def square(x):\n    return x * x\n\nresult = square(4\nprint(result)",
+      "wrong_line": 4,
+      "explanation": "Line 4 is missing the closing parenthesis after '4'. It should be 'square(4)' not 'square(4'."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Define a function that computes the square of a number",
+        "Create a list of numbers to process",
+        "For each number, call the function and append the result",
+        "Print the list of squared values"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why functions are useful when writing AI code.",
+      "rubric": "Should mention reuse (avoid repeating code), readability (naming a computation), or testability.",
+      "min_words": 12
+    }
+  ]
+}

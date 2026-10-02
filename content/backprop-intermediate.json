@@ -1,0 +1,151 @@
+{
+  "concept_slug": "backprop",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Backpropagation: The Chain Rule in Action",
+    "summary": "Backpropagation applies the chain rule to compute gradients in O(forward pass) time. Here is the actual math, worked through for a small network.",
+    "learning_goals": [
+      "Derive gradients for a two-layer network by hand",
+      "Understand the reverse-mode chain rule",
+      "See vanishing and exploding gradients in practice",
+      "Verify backprop with a numerical gradient check"
+    ],
+    "long_intro": "Now that you understand backpropagation as blame assignment, it is time to see the actual math. Backprop is not mysterious — it is the chain rule applied systematically, from the output layer backward, with each layer's gradient depending on the layer that came after it. Working through a small network by hand is the best way to see the mechanics. You will also learn about two classic failures: vanishing gradients (which killed deep learning for decades) and exploding gradients (which destabilises training when they are too large). Understanding both lets you debug real training runs.",
+    "deep_explanation": [
+      {
+        "heading": "The chain rule, formally",
+        "body": "Suppose we have a function z = f(g(h(x))). The chain rule says dz/dx = dz/dg · dg/dh · dh/dx. Each factor is the local derivative of one function with respect to its own input. The chain rule lets you compute the derivative of a composition by multiplying local derivatives. In a neural network, the composition is hundreds of layers deep, and the chain becomes the product of hundreds of local derivatives. Backprop is the trick that computes this product efficiently by caching intermediate values from the forward pass.",
+        "code": "# Chain rule in code\n# Suppose z = (3x + 1)^2\n# Let u = 3x + 1, so z = u^2\n# dz/dx = dz/du * du/dx = 2u * 3 = 6u\n\nx = 2.0\nu = 3 * x + 1\nz = u ** 2\n\ndz_du = 2 * u\ndu_dx = 3\ndz_dx = dz_du * du_dx\n\nprint(f\"z = {z}, dz/dx = {dz_dx}\")   # 49.0, 42.0"
+      },
+      {
+        "heading": "Backprop for a two-layer network",
+        "body": "Consider a two-layer network: h = σ(W₁ x + b₁), y_pred = W₂ h + b₂, and loss L = (y_pred - y_true)². The forward pass computes h, y_pred, and L. The backward pass, using the chain rule, computes: ∂L/∂y_pred = 2(y_pred - y_true); ∂L/∂W₂ = ∂L/∂y_pred · hᵀ; ∂L/∂h = W₂ᵀ · ∂L/∂y_pred; ∂L/∂(pre-activation of h) = ∂L/∂h ⊙ σ'(pre-activation); ∂L/∂W₁ = that · xᵀ. Each step reuses the previous step's gradient, which is why backprop is efficient.",
+        "code": "# Two-layer backprop by hand (scalar version)\nx = 2.0\ntrue_y = 3.0\n\nW1 = 0.5\nb1 = 0.0\nW2 = 1.2\nb2 = 0.0\n\n# Forward\nz1 = W1 * x + b1\nh  = max(0, z1)          # ReLU\ny  = W2 * h + b2\nloss = (y - true_y) ** 2\nprint(f\"y_pred={y}, loss={loss}\")\n\n# Backward\ndL_dy = 2 * (y - true_y)\ndL_dW2 = dL_dy * h\ndL_dh = dL_dy * W2\ndL_dz1 = dL_dh * (1.0 if z1 > 0 else 0.0)   # ReLU derivative\ndL_dW1 = dL_dz1 * x\nprint(f\"dL/dW2 = {dL_dW2:.4f}, dL/dW1 = {dL_dW1:.4f}\")"
+      },
+      {
+        "heading": "Vanishing and exploding gradients",
+        "body": "In very deep networks, gradients are products of many small or large numbers. If each layer's local derivative is less than 1, the product shrinks exponentially — after 50 layers, the gradient is effectively zero, and early layers never learn. This is the vanishing gradient problem, and it is why sigmoid and tanh activations are problematic in deep networks. Conversely, if each local derivative is greater than 1, the product grows exponentially — the exploding gradient problem. Solutions include ReLU activations (derivative is 0 or 1, no shrink), batch normalisation, residual connections, and gradient clipping.",
+        "code": "import math\n\n# Simulate gradient magnitude across layers\ndef multiply_gradients(local_deriv, num_layers):\n    return local_deriv ** num_layers\n\nprint(\"Local grad per layer  ×  50 layers\")\nfor d in [0.5, 0.9, 1.0, 1.1, 1.5]:\n    print(f\"  {d}  →  {multiply_gradients(d, 50):.3e}\")\n\n# 0.5^50 is essentially 0 (vanishing)\n# 1.5^50 is astronomically large (exploding)"
+      },
+      {
+        "heading": "Gradient checking",
+        "body": "Because backprop is easy to implement incorrectly, practitioners use numerical gradient checking. The idea: approximate the gradient of a weight by nudging it slightly and observing how much the loss changes: (L(w + ε) - L(w - ε)) / (2ε). Compare this numerical gradient to the analytic one from backprop. If they match closely, backprop is correct. If not, there is a bug in the backward pass. Frameworks like PyTorch have torch.autograd.gradcheck for this purpose.",
+        "code": "def loss(w):\n    return (2 * w - 3) ** 2\n\nw = 1.5\nepsilon = 1e-5\n\n# Numerical gradient\nnum_grad = (loss(w + epsilon) - loss(w - epsilon)) / (2 * epsilon)\n\n# Analytic gradient: d/dw (2w - 3)^2 = 2(2w - 3)*2 = 8w - 12\nana_grad = 8 * w - 12\n\nprint(f\"numerical: {num_grad:.6f}\")\nprint(f\"analytic:  {ana_grad:.6f}\")   # should match"
+      }
+    ],
+    "formal_definition": "Backpropagation computes gradients via reverse-mode automatic differentiation. For a composition of functions f = f_L ∘ ... ∘ f_1, the gradient of a scalar loss L with respect to input x is computed by the reverse-mode chain rule: ∂L/∂x = J_1ᵀ · J_2ᵀ · ... · J_Lᵀ · ∂L/∂f, where J_i are the Jacobians of each layer at the forward-pass activations. The computational cost is roughly twice the forward pass, independent of the number of parameters.",
+    "code_example": {
+      "language": "python",
+      "code": "import numpy as np\n\n# Numerical gradient check for a small network\ndef forward_loss(x, W1, W2):\n    h = np.maximum(0, W1 @ x)\n    y = W2 @ h\n    return (y[0] - 1.0) ** 2\n\nnp.random.seed(0)\nx = np.array([1.0, 0.5])\nW1 = np.random.randn(3, 2) * 0.1\nW2 = np.random.randn(1, 3) * 0.1\n\n# Analytic (via PyTorch normally) — here we approximate with numerical check\neps = 1e-5\nfor i in range(W1.shape[0]):\n    for j in range(W1.shape[1]):\n        W1p = W1.copy(); W1p[i, j] += eps\n        W1m = W1.copy(); W1m[i, j] -= eps\n        num_grad = (forward_loss(x, W1p, W2) - forward_loss(x, W1m, W2)) / (2 * eps)\n        print(f\"W1[{i},{j}] numerical grad: {num_grad:.4f}\")",
+      "universal_explanation": "The numerical gradient for each weight is computed by nudging it up and down by epsilon and observing the loss change. In a real training loop, PyTorch's autograd computes these gradients analytically via backprop — much faster than this loop, but producing the same values."
+    },
+    "common_mistakes": [
+      "Using too large an epsilon in gradient checking: if epsilon is too big, the numerical gradient is inaccurate. If too small, floating-point error dominates. 1e-5 is a good default.",
+      "Forgetting the ReLU derivative is 0 for negative inputs: at z <= 0, the gradient is zero. This is why dying ReLUs happen — neurons whose input is always negative never learn.",
+      "Assuming backprop is only for feedforward networks: it works for any differentiable computation graph, including RNNs, transformers, and even some reinforcement learning setups.",
+      "Ignoring gradient magnitude during training: if gradients are consistently tiny or huge, training will not converge. Track them."
+    ],
+    "real_world_usage": "Every deep learning framework implements backprop as automatic differentiation (autograd). PyTorch's autograd builds a computation graph during the forward pass and traverses it in reverse for gradients. TensorFlow has its own gradient tapes; JAX has a functional autograd. When training a 100-layer transformer, backprop computes gradients for all 10 billion parameters in a single backward pass. This is what makes deep learning tractable — without the efficiency of backprop, training GPT would take geological time.",
+    "key_takeaways": [
+      "Backprop is the chain rule applied layer by layer in reverse.",
+      "Each layer's gradient depends on the layer after it — hence 'backward'.",
+      "Vanishing gradients kill deep networks with sigmoid or tanh.",
+      "Exploding gradients cause training instability; clipping helps.",
+      "Gradient checking verifies that backprop is implemented correctly."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "The chain rule says that the derivative of a composition is the ___ of local derivatives.",
+      "options": ["product", "sum", "ratio"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "In backprop for a two-layer network, which gradient is computed FIRST?",
+      "choices": [
+        "∂L/∂W₁ (first layer)",
+        "∂L/∂W₂ (last layer)",
+        "Both at once"
+      ],
+      "correct_index": 1,
+      "reveal": "Backward pass starts from the loss and works backward. The last layer's gradient is computed first, then it flows back through earlier layers."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If each layer's local derivative is 0.5 and you have 20 layers, what is the approximate gradient magnitude at the earliest layer?",
+      "choices": [
+        "0.5",
+        "≈ 0.000001 (essentially vanished)",
+        "10"
+      ],
+      "correct_index": 1,
+      "reveal": "0.5^20 ≈ 9.5e-7. This is the vanishing gradient problem — early layers barely receive any gradient signal."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# ReLU backward pass\ndef relu_backward(z, grad_output):\n    # z: pre-activation value\n    return grad_output * z    # wrong!\n\n# ReLU derivative is 1 if z > 0, else 0\nresult = relu_backward(-0.5, 1.0)\nprint(result)",
+      "wrong_line": 4,
+      "explanation": "Line 4 multiplies grad_output by z, but the ReLU derivative is not z — it is a step function: 1 if z > 0, else 0. The correct implementation is 'return grad_output * (1.0 if z > 0 else 0.0)'. As written, this produces wrong gradients."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what the vanishing gradient problem is and why ReLU helps solve it.",
+      "rubric": "Should mention that gradients become very small in deep networks with saturating activations (like sigmoid), preventing early layers from learning. ReLU's derivative is 0 or 1 (no shrink), so gradients flow through it more easily.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The derivative of ReLU(z) is 1 if z > 0, else ___.",
+      "options": ["0", "1", "z"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "In a 30-layer network with tanh activations, why does training often fail?",
+      "choices": [
+        "The learning rate is too high",
+        "Vanishing gradients — gradients shrink exponentially through the layers",
+        "The loss function is wrong"
+      ],
+      "correct_index": 1,
+      "reveal": "tanh saturates, so its derivative is small for large inputs. In a deep stack, the product of these small derivatives shrinks exponentially — early layers receive no gradient signal."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "def sigmoid_backward(z, grad_output):\n    s = 1 / (1 + math.exp(-z))\n    return grad_output * s    # missing (1 - s)\n\nresult = sigmoid_backward(0.5, 1.0)",
+      "wrong_line": 3,
+      "explanation": "The derivative of sigmoid is s * (1 - s), not s. Line 3 is missing the (1 - s) factor, so it returns an incorrect gradient. It should be: return grad_output * s * (1 - s)."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Forward pass computes h and y_pred for each layer",
+        "Compute the loss at the output",
+        "Compute ∂L/∂y_pred (derivative of loss)",
+        "Working backward, compute gradients for each layer using the chain rule",
+        "Optimizer updates weights using the computed gradients"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain what gradient checking is and why it is useful.",
+      "rubric": "Should mention that it compares the analytic gradient from backprop with a numerical approximation to verify correctness — useful because backprop bugs are easy to introduce and hard to detect.",
+      "min_words": 20
+    }
+  ]
+}

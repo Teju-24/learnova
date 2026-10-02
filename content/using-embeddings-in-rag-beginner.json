@@ -1,0 +1,145 @@
+{
+  "concept_slug": "using-embeddings-in-rag",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Using Embeddings in RAG: Finding the Right Context",
+    "summary": "RAG combines search with generation. Embeddings find the relevant documents; the language model uses them to answer. This is how modern AI assistants stay accurate.",
+    "learning_goals": [
+      "Understand what RAG is",
+      "See how embeddings find relevant documents",
+      "Understand why RAG reduces hallucinations",
+      "Read a simple RAG pipeline in Python"
+    ],
+    "long_intro": "Imagine asking an AI chatbot about your company's internal policies. Without any special setup, the model will guess, and it will often be wrong. RAG — Retrieval-Augmented Generation — solves this by combining a search step (using embeddings) with a generation step (using a language model). The idea: instead of asking the model to remember everything, you look up the relevant documents first, hand them to the model as context, and let it answer based on what it was given. This is how almost every enterprise AI assistant, customer support bot, and knowledge-base tool works.",
+    "deep_explanation": [
+      {
+        "heading": "What RAG is",
+        "body": "RAG stands for Retrieval-Augmented Generation. The flow has four steps. (1) The user asks a question. (2) A retrieval system uses embeddings to find the most relevant documents from a knowledge base. (3) The retrieved documents are inserted into the prompt as context. (4) The language model generates an answer grounded in that context. RAG does not retrain the model — it just gives the model better input. This is why it works with any LLM and any document collection.",
+        "code": "# RAG pipeline in four steps\ndef rag_answer(question, knowledge_base, llm):\n    # 1. Embed the question\n    q_embedding = embed(question)\n    \n    # 2. Retrieve relevant documents\n    docs = retrieve(q_embedding, knowledge_base, k=3)\n    \n    # 3. Build a prompt with context\n    context = \"\\n\\n\".join(d.text for d in docs)\n    prompt = f\"\"\"Answer the question using only the context below.\n\nContext:\n{context}\n\nQuestion: {question}\nAnswer:\"\"\"\n    \n    # 4. Generate\n    return llm.generate(prompt)\n\nprint(\"RAG = retrieve → augment → generate\")"
+      },
+      {
+        "heading": "Why embeddings are essential",
+        "body": "RAG needs a way to find relevant documents. Keyword search works for exact terms, but fails on paraphrases: 'how do I reset my password?' will not match a document that says 'account recovery steps'. Embeddings solve this by capturing meaning. The query 'how do I reset my password' and a document saying 'account recovery steps' have similar embeddings, so vector search finds the document. This is what makes RAG robust to different phrasings.",
+        "code": "# Keyword search vs embedding search\nquery = \"how do I reset my password\"\n\n# Keyword: exact term matches\ndocs = [\n    \"Click here to reset your password\",      # matches 'reset' and 'password'\n    \"Account recovery steps\",                  # NO match by keyword\n    \"Reset password via email\",                # matches\n]\n\n# Embedding search: matches by meaning\ndef embed(text):\n    # In reality this returns a vector from a trained model\n    return text.lower().split()\n\ndef similarity(q, d):\n    q_words = set(embed(q))\n    d_words = set(embed(d))\n    return len(q_words & d_words) / max(len(q_words), 1)\n\nfor d in docs:\n    print(f\"sim={similarity(query, d):.2f}: {d}\")"
+      },
+      {
+        "heading": "Why RAG reduces hallucination",
+        "body": "Language models generate plausible text but have no built-in guarantee of truth. If asked about something they have not seen, they will invent a confident-sounding answer — this is hallucination. RAG reduces this by grounding the model in retrieved facts. The model is told: 'Answer using only the context below.' If the context contains the answer, the model uses it. If the context does not contain the answer, a well-prompted model will say 'I do not know' instead of guessing. This is why enterprise AI assistants almost always use RAG.",
+        "code": "# Without RAG vs with RAG\nprompt_without = \"What is Acme Corp's refund policy?\"\n# The model has never seen Acme Corp — likely hallucinates.\n\nprompt_with = \"\"\"Answer using ONLY the context below.\n\nContext:\nAcme Corp's refund policy: customers can request a full refund\nwithin 30 days of purchase.\n\nQuestion: What is Acme Corp's refund policy?\"\"\"\n# The model answers from the given context.\n\nprint(\"RAG grounds the answer in real documents\")"
+      }
+    ],
+    "formal_definition": "Retrieval-Augmented Generation (RAG) is a technique that augments a language model's input with documents retrieved from an external corpus. The pipeline typically consists of: (1) embedding the query, (2) retrieving the top-k most similar documents via vector search, (3) constructing an augmented prompt that includes both the query and the retrieved context, and (4) generating a response conditioned on the augmented prompt. RAG improves factual accuracy, reduces hallucination, and allows the system to work with knowledge that postdates or was not included in the model's training data.",
+    "code_example": {
+      "language": "python",
+      "code": "# A minimal RAG pipeline (retrieval part only)\nimport math\n\ndef cosine(a, b):\n    dot = sum(x * y for x, y in zip(a, b))\n    ma = math.sqrt(sum(x * x for x in a))\n    mb = math.sqrt(sum(x * x for x in b))\n    return dot / (ma * mb)\n\n# Fake embeddings for demonstration\nknowledge_base = [\n    {\"text\": \"Acme refund policy: 30 days\", \"emb\": [0.9, 0.1, 0.0]},\n    {\"text\": \"Acme shipping: free over $50\", \"emb\": [0.8, 0.2, 0.1]},\n    {\"text\": \"Contact support: support@acme.com\", \"emb\": [0.1, 0.5, 0.9]},\n]\n\nquery = \"How do I get my money back?\"\nquery_emb = [0.88, 0.12, 0.02]\n\nscored = [(d, cosine(query_emb, d[\"emb\"])) for d in knowledge_base]\nscored.sort(key=lambda x: -x[1])\n\nprint(\"Top retrieved documents:\")\nfor doc, score in scored[:2]:\n    print(f\"  {score:.3f}: {doc['text']}\")\n\n# Next: insert top docs into the prompt and call the LLM",
+      "universal_explanation": "The pipeline embeds the query, compares it to every document embedding, and returns the closest matches. The top documents become the context passed to the LLM. In production, this retrieval step is done with a vector database for sublinear search over millions of documents."
+    },
+    "common_mistakes": [
+      "Assuming RAG fixes all hallucinations: if the retrieval step fails to find relevant documents, the model may still hallucinate. Retrieval quality matters.",
+      "Forgetting to instruct the model to use the context: without a clear prompt ('answer using only the context'), the model may ignore the retrieved documents.",
+      "Chunking documents badly: if documents are split into chunks that break meaning, retrieval quality drops.",
+      "Using the same embedding model for query and documents: query and documents must be embedded with the SAME model so their vectors live in the same space."
+    ],
+    "real_world_usage": "Almost every enterprise AI assistant, customer support bot, legal research tool, and internal knowledge-base chatbot uses RAG. Notion AI, Glean, Harvey (legal AI), and GitHub Copilot Chat all rely on retrieval to ground their answers in specific documents. Even ChatGPT has a 'browse' mode that is essentially RAG over the web. RAG is one of the most important techniques in applied AI.",
+    "key_takeaways": [
+      "RAG combines retrieval (using embeddings) with generation (using an LLM).",
+      "Embeddings find relevant documents by meaning, not just keyword matches.",
+      "Retrieved documents are inserted into the prompt as context.",
+      "RAG reduces hallucinations by grounding answers in real documents.",
+      "Every modern AI assistant uses some form of RAG."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "RAG stands for Retrieval-Augmented ___.",
+      "options": ["Generation", "Grammar", "Generalisation"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A user asks 'How do I cancel my subscription?' A document says 'To end your plan, visit settings.' Will keyword search find it?",
+      "choices": [
+        "Yes, both mention subscription",
+        "No — no shared keywords, but embedding search would find it",
+        "Only if the document is short"
+      ],
+      "correct_index": 1,
+      "reveal": "Keyword search would miss it because 'cancel subscription' and 'end your plan' share no words. Embedding search finds it because the meanings are similar."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why is RAG particularly useful for a company's internal documents?",
+      "choices": [
+        "It is cheaper than training",
+        "Internal documents were not in the model's training data, so the model would otherwise guess",
+        "It uses less memory"
+      ],
+      "correct_index": 1,
+      "reveal": "The model has never seen the company's private documents. Without RAG, it would hallucinate answers. RAG grounds the answer in the actual documents."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# RAG pipeline\ndef answer(question, docs, llm):\n    prompt = f\"{question}\\n\\nContext:\\n{docs}\"\n    return llm.generate(prompt)\n\n# The prompt does not tell the model to use the context.",
+      "wrong_line": 3,
+      "explanation": "The prompt does not instruct the model to use the context. Without 'Answer using only the context below', the model may ignore the retrieved documents and hallucinate. Good RAG prompts always tell the model how to use the context."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what RAG is and how embeddings make it work.",
+      "rubric": "Should mention that RAG retrieves relevant documents using embedding-based search and gives them to an LLM as context, so the LLM grounds its answer in real documents rather than guessing.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The retrieval step in RAG uses ___ to find documents related to the query.",
+      "options": ["embeddings", "keywords", "regex"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Why does RAG reduce hallucination compared to a plain language model?",
+      "choices": [
+        "RAG retrains the model on new data",
+        "RAG provides relevant documents in the prompt so the model answers from them",
+        "RAG uses a smaller model"
+      ],
+      "correct_index": 1,
+      "reveal": "RAG grounds the answer in retrieved documents. The model is instructed to answer from the provided context, so it does not have to guess."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "# Query embedding\nquery = \"How do I reset my password?\"\nquery_emb = embed_with_model_A(query)\n\n# Document embeddings (indexed earlier)\ndoc_emb = embed_with_model_B(doc_text)   # different model\n\nsimilarity = cosine(query_emb, doc_emb)",
+      "wrong_line": 7,
+      "explanation": "The query and documents are embedded with different models. Vectors from different models live in different spaces, so cosine similarity between them is meaningless. Always use the same embedding model for queries and documents."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Chunk source documents and embed them with a chosen model",
+        "Store document embeddings in a vector database",
+        "When a query arrives, embed it with the same model",
+        "Retrieve the top-K most similar documents",
+        "Insert retrieved documents into the prompt and call the LLM"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why a well-designed RAG prompt should tell the model to 'answer using only the context'.",
+      "rubric": "Should mention that this instruction prevents the model from hallucinating and grounds the answer in retrieved documents. Without it, the model may ignore the context and invent an answer.",
+      "min_words": 20
+    }
+  ]
+}

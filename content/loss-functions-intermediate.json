@@ -1,0 +1,139 @@
+{
+  "concept_slug": "loss-functions",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Loss Functions: MSE, Cross-Entropy, and Choosing the Right One",
+    "summary": "Different tasks need different loss functions. Regression uses mean squared error. Classification uses cross-entropy. The choice affects how the model learns.",
+    "learning_goals": [
+      "Distinguish regression losses from classification losses",
+      "Understand why cross-entropy is used for classification",
+      "Read mean squared error and cross-entropy in Python",
+      "Choose the right loss function for a given task"
+    ],
+    "long_intro": "You already know that a loss function turns prediction error into a single number. But not all loss functions are the same. If you are predicting a number — house price, temperature, tomorrow's stock — you want a loss that penalises numerical distance. If you are predicting a category — cat or dog, spam or not — you want a loss that penalises confident mistakes. Using the wrong loss leads to a model that trains poorly even if everything else is right. This lesson shows you the two most important loss functions, why they exist, and how to pick between them.",
+    "deep_explanation": [
+      {
+        "heading": "Mean squared error for regression",
+        "body": "Mean squared error (MSE) is the average of (prediction - truth)^2 over all examples. Squaring does two things: it makes all values positive (so under- and over-predictions both count), and it penalises large errors much more than small ones (an error of 10 contributes 100, while an error of 1 contributes 1). This is usually what we want for regression: a prediction that is far off should be penalised heavily.",
+        "code": "def mse(preds, truths):\n    total = 0\n    for p, t in zip(preds, truths):\n        total += (p - t) ** 2\n    return total / len(preds)\n\nprint(mse([3.0, 5.0], [3.0, 5.0]))    # 0.0\nprint(mse([3.5, 5.0], [3.0, 5.0]))    # 0.125\nprint(mse([5.0, 5.0], [3.0, 5.0]))    # 2.0"
+      },
+      {
+        "heading": "Cross-entropy for classification",
+        "body": "Cross-entropy is the standard loss for classification. It takes the model's predicted probability for the correct class, takes the negative logarithm of it, and averages over examples. If the model assigns high probability to the correct class, the loss is small. If it assigns low probability, the loss is large — and if it confidently assigns very low probability (like 0.001 to the correct class), the loss becomes huge. This is why cross-entropy pushes models to be both correct AND not overconfident in wrong answers.",
+        "code": "import math\n\ndef cross_entropy(p_correct):\n    return -math.log(p_correct)\n\nprint(cross_entropy(1.0))    # 0.0     (perfect)\nprint(cross_entropy(0.9))    # ~0.105  (good)\nprint(cross_entropy(0.5))    # ~0.693  (uncertain)\nprint(cross_entropy(0.1))    # ~2.303  (bad)\nprint(cross_entropy(0.001))  # ~6.908  (very bad)"
+      },
+      {
+        "heading": "Why cross-entropy beats squared error for classification",
+        "body": "If you use squared error for classification, a model that predicts 0.9 probability for the correct class but 0.1 for the wrong class gets a certain small loss. But if it predicts 0.99 for the correct class, the loss barely improves. Squared error is too gentle on classification mistakes — it does not strongly push the model toward decisive correct predictions. Cross-entropy does. When the model is wrong, cross-entropy grows to infinity as the predicted probability approaches zero. This strong signal is why cross-entropy is the default for classification.",
+        "code": "# Compare squared error vs cross-entropy\np_correct = 0.01\n\nsq_err = (1 - p_correct) ** 2\nce     = -math.log(p_correct)\n\nprint(f\"squared error: {sq_err:.3f}\")   # 0.980\nprint(f\"cross-entropy: {ce:.3f}\")       # 4.605\n\n# Same wrong prediction, dramatically different penalty"
+      },
+      {
+        "heading": "Choosing the right loss",
+        "body": "The rule is simple: regression uses MSE or MAE; classification uses cross-entropy (also called log loss). Other losses exist for specific needs — Huber loss for regression when you want robustness to outliers, focal loss for classification when classes are heavily imbalanced, contrastive loss for learning embeddings. But for 95% of tasks, MSE and cross-entropy are what you need. If you find yourself using a different loss, make sure you have a specific reason.",
+        "code": "# The decision tree\ndef choose_loss(task):\n    if task == \"regression\":\n        return \"mse\"    # predicting a number\n    elif task == \"binary_classification\":\n        return \"binary_cross_entropy\"\n    elif task == \"multi_class_classification\":\n        return \"categorical_cross_entropy\"\n    else:\n        raise ValueError(\"task not recognised\")\n\nprint(choose_loss(\"regression\"))            # mse\nprint(choose_loss(\"multi_class_classification\"))  # categorical_cross_entropy"
+      }
+    ],
+    "formal_definition": "For regression, mean squared error is defined as L = (1/n) Σ (y_i - ŷ_i)^2. For binary classification, binary cross-entropy is L = -(1/n) Σ [y_i log(ŷ_i) + (1-y_i) log(1-ŷ_i)]. For multi-class classification, categorical cross-entropy is L = -(1/n) Σ Σ y_ic log(ŷ_ic) where c ranges over classes. Choosing a loss function determines what the model optimises toward; a mis-specified loss leads to a model that trains poorly even with correct architecture and data.",
+    "code_example": {
+      "language": "python",
+      "code": "import math\n\ndef categorical_cross_entropy(p_correct):\n    return -math.log(p_correct)\n\ndef mean_squared_error(preds, truths):\n    total = 0\n    for p, t in zip(preds, truths):\n        total += (p - t) ** 2\n    return total / len(preds)\n\n# Classification example\nprint(\"CE:\", round(categorical_cross_entropy(0.8), 3))   # ~0.223\n\n# Regression example\nprint(\"MSE:\", round(mean_squared_error([2.9, 3.1], [3.0, 3.0]), 3))   # 0.01",
+      "universal_explanation": "Two different tasks need two different losses. Classification reports -log(probability of correct class). Regression reports average squared distance. Each loss is small when predictions are good, large when they are bad, but the exact shape differs because the tasks themselves differ."
+    },
+    "common_mistakes": [
+      "Using MSE for classification: it trains slowly because it does not strongly penalise confident wrong predictions.",
+      "Using cross-entropy for regression: cross-entropy needs probabilities, so it does not apply directly to continuous outputs.",
+      "Forgetting to clamp probabilities away from 0: -log(0) is infinity, so library functions clamp p to something like 1e-15 to avoid overflow.",
+      "Reporting loss without specifying which loss: 'loss of 0.5' is meaningless unless you know whether it is MSE, cross-entropy, or something else."
+    ],
+    "real_world_usage": "Every image classifier (ResNet, ViT, CLIP) is trained with cross-entropy. Every regression model (house price prediction, stock forecasting) uses MSE or MAE. Every language model (GPT, Claude) uses cross-entropy over its vocabulary. Every recommendation model uses a variant of cross-entropy or a ranking loss. When you read a paper about training a new model, one of the first sections describes which loss they used and why — because it is one of the most consequential design decisions.",
+    "key_takeaways": [
+      "Different tasks need different loss functions.",
+      "Regression typically uses MSE or MAE.",
+      "Classification uses cross-entropy.",
+      "Cross-entropy penalises confident wrong predictions more heavily than squared error.",
+      "The choice of loss function matters as much as the model architecture."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "The standard loss for regression (predicting a number) is mean ___ error.",
+      "options": ["squared", "absolute", "cubed"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A classifier assigns p_correct = 0.001. Is the cross-entropy loss small or large?",
+      "choices": ["Small", "Large", "Zero"],
+      "correct_index": 1,
+      "reveal": "Very large. -log(0.001) ≈ 6.9. Cross-entropy heavily penalises confident wrong predictions."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Which loss function should you use for predicting tomorrow's temperature?",
+      "choices": ["Cross-entropy", "Mean squared error", "Either works the same"],
+      "correct_index": 1,
+      "reveal": "Temperature is a continuous number, so this is regression. Mean squared error is the right choice."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "import math\n\ndef loss(p_correct):\n    return math.log(p_correct)\n\nprint(loss(0.9))   # should be positive small number",
+      "wrong_line": 4,
+      "explanation": "Cross-entropy is defined as -log(p), not +log(p). The current function returns a negative number for p < 1, but losses must be non-negative. The return should be -math.log(p_correct)."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why cross-entropy is preferred over squared error for classification.",
+      "rubric": "Should mention that cross-entropy strongly penalises confident wrong predictions, while squared error is too gentle. Cross-entropy pushes the model toward decisive correct predictions.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "For classification, the standard loss function is ___.",
+      "options": ["cross-entropy", "mean squared error", "Euclidean distance"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Classifier outputs p_correct = 0.95. What is the approximate cross-entropy loss?",
+      "choices": ["About 0.05", "About 0.5", "About 1.0"],
+      "correct_index": 0,
+      "reveal": "-log(0.95) ≈ 0.051. High probability for the correct class → small loss."
+    },
+    {
+      "type": "predict",
+      "question": "Which loss would you use for a binary spam classifier?",
+      "choices": ["MSE", "Binary cross-entropy", "MAE"],
+      "correct_index": 1,
+      "reveal": "Classification (spam / not spam) uses binary cross-entropy."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Model produces a probability distribution over classes",
+        "Identify the predicted probability for the correct class",
+        "Take the negative logarithm of that probability",
+        "Average across examples to get the batch loss"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why predicting p_correct = 0.001 produces a much larger cross-entropy loss than predicting p_correct = 0.5.",
+      "rubric": "Should mention that -log(x) grows unbounded as x approaches 0, so confident wrong predictions are heavily penalised. p=0.001 gives loss ~6.9 vs p=0.5 giving loss ~0.69.",
+      "min_words": 20
+    }
+  ]
+}

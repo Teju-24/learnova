@@ -1,0 +1,150 @@
+{
+  "concept_slug": "vector-db",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Vector Databases: Storing Meaning for Fast Search",
+    "summary": "A vector database stores embeddings and finds the closest ones to a query in milliseconds. It is how AI search and RAG work at scale.",
+    "learning_goals": [
+      "Understand what a vector database is",
+      "See why regular databases cannot do semantic search",
+      "Understand the basic search flow",
+      "Know when to use one"
+    ],
+    "long_intro": "You have embeddings — vectors that capture meaning. But how do you search through millions of them? If you have 10 million documents and need to find the 10 most similar to a query, comparing against all of them one by one is too slow. A vector database is a specialised system that stores embeddings and answers nearest-neighbour queries in milliseconds. It uses clever indexing (HNSW, IVF) to avoid comparing every vector. This is what makes modern semantic search, recommendation, and RAG systems possible.",
+    "deep_explanation": [
+      {
+        "heading": "Why regular databases cannot do this",
+        "body": "A traditional relational database (Postgres, MySQL) is designed to match exact values or ranges: find users where age > 30, find orders where status = 'shipped'. It cannot efficiently find 'the 10 vectors closest to this query vector'. You could store vectors as JSON or arrays and write a loop, but comparing millions of high-dimensional vectors on every query is impossibly slow for production. Vector databases are built specifically for this — nearest-neighbour search over millions of embeddings, indexed for speed.",
+        "code": "# The naive approach (too slow at scale)\nimport math\n\ndef cosine(a, b):\n    dot = sum(x * y for x, y in zip(a, b))\n    ma = math.sqrt(sum(x * x for x in a))\n    mb = math.sqrt(sum(x * x for x in b))\n    return dot / (ma * mb)\n\nquery = [0.9, 0.1, 0.0]\ndatabase = [\n    [0.8, 0.2, 0.0],\n    [0.1, 0.9, 0.0],\n    [0.7, 0.3, 0.0],\n    # ... imagine 10,000,000 more\n]\n\n# Compare against every vector — O(n)\nresults = sorted(\n    ((i, cosine(query, v)) for i, v in enumerate(database)),\n    key=lambda x: -x[1]\n)[:3]\nprint(results)\n# Fine for 3, impossible for 10 million"
+      },
+      {
+        "heading": "How vector databases work",
+        "body": "A vector database stores embeddings and builds an index that lets it find nearest neighbours without scanning everything. The most common index is HNSW (Hierarchical Navigable Small World) — a multi-layer graph where each vector is connected to a few nearby vectors. Search starts at the top layer (coarse) and descends (fine), visiting only a small fraction of the vectors. The result is approximate — you might miss the exact nearest neighbour — but the speedup is enormous (sublinear time).",
+        "code": "# The HNSW idea, conceptually\n# layer 3 (coarse):   A ─ B ─ C\n# layer 2:            D ─ E ─ F ─ G\n# layer 1 (fine):     H ─ I ─ J ─ K ─ L ─ M\n#\n# Query starts at layer 3, moves to nearest node,\n# drops to layer 2, moves again, drops to layer 1,\n# visits only a few nodes per layer.\n\nprint(\"HNSW: navigate from coarse to fine, visiting few nodes\")"
+      },
+      {
+        "heading": "The basic workflow",
+        "body": "A vector database has three operations: (1) insert — add a new embedding with its metadata; (2) update/delete — change or remove entries; (3) search — given a query embedding, return the K nearest entries. Most systems also support filtering — combine vector search with metadata filters ('show me the most similar documents written by author X'). This is the core API. Everything else is optimisations.",
+        "code": "# Vector DB API (conceptual)\nclass VectorDB:\n    def __init__(self):\n        self.items = []   # (id, vector, metadata)\n\n    def insert(self, id, vector, metadata=None):\n        self.items.append((id, vector, metadata or {}))\n\n    def search(self, query_vector, k=3):\n        import math\n        def cosine(a, b):\n            d = sum(x * y for x, y in zip(a, b))\n            ma = math.sqrt(sum(x * x for x in a))\n            mb = math.sqrt(sum(x * x for x in b))\n            return d / (ma * mb)\n        scored = [(id, cosine(query_vector, v), m) for id, v, m in self.items]\n        scored.sort(key=lambda x: -x[1])\n        return scored[:k]\n\ndb = VectorDB()\ndb.insert(\"doc1\", [0.9, 0.1, 0.0], {\"title\": \"Cats\"})\ndb.insert(\"doc2\", [0.1, 0.9, 0.0], {\"title\": \"Finance\"})\nresults = db.search([0.85, 0.15, 0.0], k=2)\nprint(results)"
+      }
+    ],
+    "formal_definition": "A vector database is a data store optimised for indexing and querying high-dimensional vectors under similarity metrics such as cosine similarity or Euclidean distance. It supports insert, update, delete, and approximate nearest neighbour (ANN) search, typically using index structures like HNSW (graph-based) or IVF (clustering-based). Many support hybrid search combining vector similarity with metadata filters.",
+    "code_example": {
+      "language": "python",
+      "code": "# A minimal vector store with cosine search\nimport math\n\nclass MiniVectorStore:\n    def __init__(self):\n        self.store = []\n\n    def add(self, id, vector):\n        self.store.append((id, vector))\n\n    def _cosine(self, a, b):\n        dot = sum(x * y for x, y in zip(a, b))\n        ma = math.sqrt(sum(x * x for x in a))\n        mb = math.sqrt(sum(x * x for x in b))\n        return dot / (ma * mb)\n\n    def query(self, vector, k=3):\n        scored = [(id, self._cosine(vector, v)) for id, v in self.store]\n        scored.sort(key=lambda x: -x[1])\n        return scored[:k]\n\nstore = MiniVectorStore()\nstore.add(\"article_about_cats\", [0.9, 0.1, 0.05])\nstore.add(\"article_about_dogs\", [0.85, 0.15, 0.05])\nstore.add(\"article_about_finance\", [-0.1, 0.9, 0.8])\nstore.add(\"article_about_banking\", [-0.2, 0.85, 0.75])\n\nquery = [0.88, 0.12, 0.06]\nprint(store.query(query, k=3))",
+      "universal_explanation": "The store holds embeddings and returns the k most similar to a query by cosine similarity. This tiny example does an exhaustive scan — real vector databases use an ANN index to make the same query sublinear in the number of stored vectors."
+    },
+    "common_mistakes": [
+      "Using a vector database when a normal database would do: for fewer than ~10,000 vectors, an exhaustive scan in Postgres with pgvector or even a Python loop is fine.",
+      "Storing raw text instead of embeddings: vector databases work on vectors, not text. You compute the embedding first.",
+      "Forgetting metadata filtering: pure vector search often needs to be combined with filter conditions (date, author, category).",
+      "Assuming exact nearest neighbours: ANN indexes are approximate — they trade a small probability of missing the true nearest neighbour for massive speedups."
+    ],
+    "real_world_usage": "Pinecone, Weaviate, Qdrant, Chroma, and pgvector are production vector databases. OpenAI and Anthropic recommend them for RAG pipelines. Google, Meta, and Spotify use vector search at billion-scale for recommendation and search. When you ask a chatbot a question and it retrieves relevant documents, a vector database is finding those documents in tens of milliseconds.",
+    "key_takeaways": [
+      "A vector database stores embeddings and answers nearest-neighbour queries fast.",
+      "Regular databases cannot do semantic search efficiently.",
+      "ANN indexes (HNSW, IVF) make search sublinear instead of O(n).",
+      "Vector search is often combined with metadata filters.",
+      "Vector databases power modern search, recommendation, and RAG."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "A vector database is optimised for finding the nearest ___ to a query embedding.",
+      "options": ["neighbours", "tables", "columns"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why is exhaustive search over 10 million vectors too slow?",
+      "choices": [
+        "The vectors are too big to store",
+        "It requires a comparison per query per vector, scaling linearly with the corpus size",
+        "Python doesn't support vector math"
+      ],
+      "correct_index": 1,
+      "reveal": "Exhaustive search is O(n) per query — with 10 million vectors, that is 10 million similarity computations per query. ANN indexes reduce this to sublinear time."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You have 500 vectors. Do you need a dedicated vector database?",
+      "choices": [
+        "Yes, always",
+        "No — exhaustive search over 500 vectors is fast enough",
+        "Only if you have a GPU"
+      ],
+      "correct_index": 1,
+      "reveal": "For small corpora (< ~10,000), exhaustive search is fine. Vector databases shine when you need sublinear search over millions of vectors."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Using a vector store\ndef search(query_text, vector_db):\n    # query_text is a string\n    results = vector_db.search(query_text)\n    return results",
+      "wrong_line": 4,
+      "explanation": "The function passes raw text to the vector database, but vector databases search vectors, not text. The query text must first be embedded with the same model used for the stored documents. Then the embedding is searched."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what a vector database does and when you would use one.",
+      "rubric": "Should mention that it stores embeddings and finds the nearest ones to a query quickly. Use it when you have many (thousands to millions) embeddings and need fast semantic search.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "HNSW and IVF are examples of ___ nearest neighbour indexes.",
+      "options": ["approximate", "exact", "random"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which query does a vector database handle well that a SQL database does not?",
+      "choices": [
+        "Find all users aged over 30",
+        "Find the 10 most similar documents to this embedding",
+        "Sum total sales for Q3"
+      ],
+      "correct_index": 1,
+      "reveal": "Finding nearest neighbours to a vector query is what vector databases are built for. SQL databases handle range and exact queries well."
+    },
+    {
+      "type": "predict",
+      "question": "You are building a small RAG app with 200 documents. Which is likely sufficient?",
+      "choices": [
+        "A dedicated vector database cluster",
+        "A Python list with cosine similarity, or Postgres with pgvector",
+        "A GPU-accelerated ANN index"
+      ],
+      "correct_index": 1,
+      "reveal": "For 200 documents, an exhaustive scan is trivially fast. Save the vector database until you are dealing with thousands to millions of embeddings."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Embed all documents with a chosen model",
+        "Insert embeddings plus metadata into the vector database",
+        "When a query arrives, embed the query with the same model",
+        "Search the database for the nearest vectors",
+        "Return the top-K results (optionally with metadata filters)"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why vector databases use approximate search instead of exact search.",
+      "rubric": "Should mention that exact search requires comparing against every vector (O(n)), which is too slow at scale. Approximate indexes visit only a small subset of vectors, achieving sublinear time at the cost of a small probability of missing the true nearest neighbour.",
+      "min_words": 25
+    }
+  ]
+}

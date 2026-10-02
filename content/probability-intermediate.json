@@ -1,0 +1,146 @@
+{
+  "concept_slug": "probability",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Probability: Distributions and Bayes",
+    "summary": "A probability distribution describes the full landscape of uncertainty over possible outcomes. Bayes' rule updates our beliefs when new evidence arrives.",
+    "learning_goals": [
+      "Understand probability distributions as landscapes of likelihood",
+      "Read a simple probability distribution in code",
+      "Understand Bayes' rule intuitively",
+      "See how models produce distributions over classes or tokens"
+    ],
+    "long_intro": "A single probability is one number. A probability distribution is the full set of numbers across all possible outcomes. When an image classifier says 0.94 cat, 0.04 dog, 0.02 rabbit, those three numbers form a distribution. When a language model predicts the next word, it outputs a distribution over the entire vocabulary, often tens of thousands of options. Understanding distributions is essential because they are the actual output of every deep learning model. And Bayes' rule is the mathematical tool that tells us how to update a distribution when new information arrives — which is, in essence, what 'learning' means.",
+    "deep_explanation": [
+      {
+        "heading": "Probability distributions",
+        "body": "A probability distribution assigns a probability to every possible outcome. For a six-sided die, it assigns 1/6 to each face. For an image classifier, it assigns probabilities to each class. The probabilities must sum to 1, always. The distribution tells you both the most likely outcome (the one with the highest probability) and how spread out the uncertainty is (whether one outcome dominates or the probabilities are spread across many).",
+        "code": "dist = {\n    \"cat\": 0.94,\n    \"dog\": 0.04,\n    \"rabbit\": 0.02,\n}\n\nprint(\"Most likely:\", max(dist, key=dist.get))\nprint(\"Total:\", sum(dist.values()))   # 1.0"
+      },
+      {
+        "heading": "Reading a distribution",
+        "body": "When you see a distribution, two questions matter: (1) which outcome has the highest probability, and (2) how decisive is the distribution? A distribution like {cat: 0.99, dog: 0.005, rabbit: 0.005} is decisive — the model has a strong belief. A distribution like {cat: 0.4, dog: 0.35, rabbit: 0.25} is spread out — the model is genuinely unsure. In production AI, the second case often triggers a human review, because acting on a low-confidence prediction is risky.",
+        "code": "confident = {\"cat\": 0.99, \"dog\": 0.005, \"rabbit\": 0.005}\nunsure    = {\"cat\": 0.4, \"dog\": 0.35, \"rabbit\": 0.25}\n\ndef decisiveness(d):\n    return max(d.values())\n\nprint(decisiveness(confident))   # 0.99\nprint(decisiveness(unsure))      # 0.4"
+      },
+      {
+        "heading": "Bayes' rule: updating beliefs",
+        "body": "Bayes' rule tells you how to update your belief about something when new evidence arrives. Suppose you believe there is a 30% chance of rain today (this is your prior). Then you see dark clouds. The probability of dark clouds given rain is high; given no rain, it is lower. Bayes' rule combines these two pieces — your prior and the likelihood of the evidence — to produce your posterior: your updated belief after seeing the clouds. This is exactly what an AI model does at inference time: it starts with prior beliefs learned during training, observes the input, and produces updated probabilities.",
+        "code": "# Bayes' rule in code (simplified)\ndef update(prior_rain, p_clouds_if_rain, p_clouds_if_no_rain):\n    prior_no_rain = 1 - prior_rain\n    numerator = p_clouds_if_rain * prior_rain\n    denominator = (p_clouds_if_rain * prior_rain + \n                   p_clouds_if_no_rain * prior_no_rain)\n    return numerator / denominator\n\nposterior = update(0.3, 0.9, 0.2)\nprint(\"P(rain | clouds):\", posterior)   # ~0.66"
+      },
+      {
+        "heading": "How modern models output distributions",
+        "body": "Every classification model ends with a layer that produces a distribution over classes. Every language model, at every step, produces a distribution over the next token in its vocabulary. When you sample from these distributions, you get the model's output. The distribution itself carries more information than the sampled output: temperature, top-k, and top-p sampling strategies all operate on the distribution before it becomes a single token. Understanding that the model always produces a distribution — never a single answer — is foundational to understanding how modern AI works.",
+        "code": "# Language model next-token distribution (simplified)\ntoken_dist = {\n    \"the\": 0.35,\n    \"a\":   0.25,\n    \"this\": 0.20,\n    \"that\": 0.15,\n    \"other\": 0.05,\n}\n\nimport random\ndef sample(dist):\n    r = random.random()\n    cum = 0\n    for token, p in dist.items():\n        cum += p\n        if r <= cum:\n            return token\n\nprint(sample(token_dist))  # samples according to probabilities"
+      }
+    ],
+    "formal_definition": "A discrete probability distribution over outcomes x_1, ..., x_n is a function p assigning each outcome a non-negative value such that Σp(x_i) = 1. Bayes' rule states that P(A|B) = P(B|A) * P(A) / P(B), where P(A) is the prior, P(B|A) is the likelihood, and P(A|B) is the posterior. Neural network classifiers output distributions via a softmax layer over class logits.",
+    "code_example": {
+      "language": "python",
+      "code": "def bayes_update(prior, likelihood_true, likelihood_false):\n    p_true = prior\n    p_false = 1 - prior\n    evidence = likelihood_true * p_true + likelihood_false * p_false\n    return (likelihood_true * p_true) / evidence\n\n# A test is 95% sensitive and 90% specific\n# Prior probability of disease in population: 1%\nprior = 0.01\np_pos_if_sick = 0.95\np_pos_if_healthy = 0.10\n\nposterior = bayes_update(prior, p_pos_if_sick, p_pos_if_healthy)\nprint(\"P(sick | positive test):\", posterior)",
+      "universal_explanation": "Even a test with 95% sensitivity only pushes the probability of disease from 1% to about 9% if the disease is rare. This counterintuitive result is why Bayes' rule matters — it forces us to account for base rates, not just the test's accuracy."
+    },
+    "common_mistakes": [
+      "Forgetting that distributions must sum to 1: if your probabilities sum to more or less, something is wrong.",
+      "Reading only the max and ignoring the shape: a distribution with 0.4 for the top class is very different from one with 0.9.",
+      "Confusing P(A|B) with P(B|A): the probability of rain given clouds is not the probability of clouds given rain. This is the most common error in probabilistic reasoning.",
+      "Ignoring base rates: a rare disease tested with a highly accurate test still has a low posterior probability of disease — because the prior matters."
+    ],
+    "real_world_usage": "Every token an LLM generates is sampled from a probability distribution over its entire vocabulary. Every image classifier, medical diagnostic, and fraud detection model outputs a distribution and then compares it against a threshold. Recommendation systems rank items by their probabilities. When you see the top-5 predictions from any AI system, you are seeing the highest-probability outcomes from a distribution. Bayes' rule appears in spam filtering, medical diagnosis, and every probabilistic reasoning system ever built.",
+    "key_takeaways": [
+      "A probability distribution assigns probabilities to all possible outcomes.",
+      "The probabilities in a distribution sum to 1.",
+      "The shape of the distribution tells you how confident the model is.",
+      "Bayes' rule updates beliefs when new evidence arrives.",
+      "Every classification and language model outputs a distribution."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "The probabilities in a distribution must always sum to ___.",
+      "options": ["1", "0", "100"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Which distribution shows a more confident model?\n\nA: {cat: 0.99, dog: 0.005, rabbit: 0.005}\nB: {cat: 0.4, dog: 0.35, rabbit: 0.25}",
+      "choices": ["A", "B", "Both equally"],
+      "correct_index": 0,
+      "reveal": "A is much more decisive — the top probability is 0.99 versus 0.4. Higher max probability means higher confidence."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If P(clouds | rain) = 0.9 and P(clouds | no rain) = 0.2, does seeing clouds increase the probability of rain?",
+      "choices": [
+        "Yes, because clouds are much more likely when it rains",
+        "No, because clouds can happen without rain",
+        "Cannot be determined"
+      ],
+      "correct_index": 0,
+      "reveal": "Yes. Bayes' rule combines the prior with the likelihood. Since clouds are 4.5x more likely when it rains, observing clouds shifts the posterior toward rain."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "dist = {\"cat\": 0.5, \"dog\": 0.3, \"rabbit\": 0.4}\n\ntop = max(dist, key=dist.get)\nprint(\"Top class:\", top)",
+      "wrong_line": 1,
+      "explanation": "The probabilities sum to 1.2, but they must sum to 1.0. Either cat or rabbit has the wrong probability. A valid distribution over these three classes would need the values to add up to exactly 1."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why a language model outputs a distribution over the next token rather than a single token.",
+      "rubric": "Should mention that there are many possible next tokens, the model expresses uncertainty as probabilities, and sampling from the distribution produces the output.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "In Bayes' rule, P(A|B) = P(B|A) * P(A) / ___.",
+      "options": ["P(B)", "P(A)", "1"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "A classifier outputs {spam: 0.55, ham: 0.45}. How confident is the model?",
+      "choices": [
+        "Very confident it is spam",
+        "Slightly leaning toward spam",
+        "No information"
+      ],
+      "correct_index": 1,
+      "reveal": "0.55 is just above even odds. The model is only slightly more confident it is spam than ham."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "dist = {\"a\": 0.6, \"b\": 0.5, \"c\": 0.2}\n# This distribution is valid\ntop = max(dist, key=dist.get)",
+      "wrong_line": 2,
+      "explanation": "The distribution sums to 1.3, not 1.0. The comment 'This distribution is valid' is wrong. Valid probability distributions must have probabilities summing to exactly 1."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Start with a prior probability for a hypothesis",
+        "Observe new evidence",
+        "Compute the likelihood of the evidence under each hypothesis",
+        "Apply Bayes' rule to compute the posterior"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why a rare disease can have a low posterior probability even after a positive test result.",
+      "rubric": "Should mention that if the disease is rare (low prior), most positive tests come from the much larger group of healthy people who test positive as false positives. Bayes' rule accounts for the base rate.",
+      "min_words": 20
+    }
+  ]
+}

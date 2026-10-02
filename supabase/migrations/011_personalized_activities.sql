@@ -1,0 +1,23 @@
+-- ============================================================
+-- 011_personalized_activities.sql — per-learner practice task framing
+-- ============================================================
+-- The tier already controls difficulty. This column controls *framing*: the
+-- same underlying activity, reworded in the vocabulary of the learner's own
+-- field. A chemistry learner and an engineering learner meet the same
+-- gradient-descent step, phrased in terms their work already uses.
+--
+-- Keyed by `${conceptId}:${tier}:${sequenceIndex}` so a reframe is scoped to
+-- one activity in one position of one timeline. Value shape:
+--   { prompt: string, sentence: string | null, generated_at: string,
+--     profile_version: int }
+--
+-- `profile_version` is copied from learners.profile_version, which
+-- /api/onboard bumps whenever the background, goal, or comfort changes. The
+-- route serves a cached entry only when the versions match, so editing a
+-- profile retires every reframe written under the old one instead of leaving
+-- stale wording behind.
+--
+-- Everything lives in one column rather than a table because it is read and
+-- written as a single blob per learner and never queried by activity.
+alter table learners
+  add column if not exists personalized_activities jsonb not null default '{}'::jsonb;

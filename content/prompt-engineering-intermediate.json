@@ -1,0 +1,147 @@
+{
+  "concept_slug": "prompt-engineering",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Prompt Engineering: Chain-of-Thought, Tool Use, and Structured Output",
+    "summary": "Advanced prompting techniques — chain-of-thought, self-consistency, structured output, tool use — turn LLMs into reliable components of production systems.",
+    "learning_goals": [
+      "Understand chain-of-thought prompting and why it works",
+      "Read structured output patterns (JSON mode, function calling)",
+      "Understand tool use and agentic prompting",
+      "Apply prompt patterns to real-world tasks"
+    ],
+    "long_intro": "You know the fundamentals: role, task, context, format, examples. This lesson moves to advanced prompting techniques used in real production systems. Chain-of-thought prompting makes models reason step by step, improving accuracy on math and logic. Self-consistency samples multiple reasoning paths and takes the majority vote. Structured output (JSON mode, function calling) turns LLMs into reliable API components. Tool use lets models call external functions and combine them into agents. These techniques are the difference between a demo and a product.",
+    "deep_explanation": [
+      {
+        "heading": "Chain-of-thought prompting",
+        "body": "For reasoning tasks — math, logic, multi-step deduction — asking the model to 'think step by step' dramatically improves accuracy. The reason: the model generates the reasoning tokens, which become context for the final answer. Without step-by-step reasoning, the model must produce the answer in one shot, which is harder for multi-step problems. This is one of the simplest and most reliable prompt improvements available.",
+        "code": "# Zero-shot vs chain-of-thought\nzero_shot = \"Roger has 5 tennis balls. He buys 2 more cans, each with 3 balls. How many does he have?\"\n\nchain_of_thought = \"\"\"Roger has 5 tennis balls. He buys 2 more cans, each with 3 balls.\nHow many does he have?\n\nLet's think step by step.\"\"\"\n\nprint(\"Zero-shot:\", zero_shot)\nprint()\nprint(\"Chain of thought:\")\nprint(chain_of_thought)"
+      },
+      {
+        "heading": "Self-consistency",
+        "body": "For high-stakes reasoning, sample the model multiple times with different temperatures, then take the majority answer. If the model gets the same answer through different reasoning paths, that answer is more trustworthy. This is called self-consistency and it is a simple way to reduce error rates on reasoning tasks. It costs more tokens (N samples instead of 1) but is often worth it for critical decisions.",
+        "code": "# Self-consistency: sample N times, take majority\nfrom collections import Counter\n\n# Simulate 5 samples from a model\nsamples = [42, 42, 41, 42, 43]\n\nmajority = Counter(samples).most_common(1)[0]\nprint(f\"Majority answer: {majority[0]} (appeared {majority[1]} times)\")"
+      },
+      {
+        "heading": "Structured output and JSON mode",
+        "body": "Production systems cannot parse free-form text. They need structured output — usually JSON — that matches a fixed schema. Modern APIs offer JSON mode (the model is constrained to output valid JSON) or function calling (the model calls a named function with typed arguments). Combined with a schema validator like Zod or Pydantic, this turns the LLM into a reliable component that either produces conforming output or fails loudly.",
+        "code": "# JSON mode prompt example\nprompt = \"\"\"Extract the following information from the email and return JSON:\n{ \"name\": string, \"email\": string, \"order_id\": string, \"items\": string[] }\n\nEmail:\nHi, this is Sarah (sarah@example.com). My order #45231 arrived\nwith a broken lamp and a missing bulb.\n\nReturn only JSON.\"\"\"\n\nprint(prompt)"
+      },
+      {
+        "heading": "Tool use and agentic prompting",
+        "body": "Modern LLMs can call tools — functions you define that the model can invoke with arguments. For example, you give the model a 'get_weather' function, and when asked 'What is the weather in Delhi?', the model calls get_weather(city='Delhi') instead of guessing. Chained tool calls become agents: the model plans multiple steps, calls tools, observes results, and iterates. This is how ChatGPT plugins, Claude's tools, and every modern AI agent framework works.",
+        "code": "# Tool use pattern\ntools = [\n    {\n        \"name\": \"get_weather\",\n        \"description\": \"Get the current weather for a city\",\n        \"parameters\": {\n            \"type\": \"object\",\n            \"properties\": {\n                \"city\": {\"type\": \"string\"},\n                \"unit\": {\"type\": \"string\", \"enum\": [\"celsius\", \"fahrenheit\"]},\n            },\n            \"required\": [\"city\"],\n        },\n    },\n]\n\nprint(\"Tool schema:\")\nprint(tools[0])"
+      }
+    ],
+    "formal_definition": "Advanced prompting techniques include: chain-of-thought (explicit reasoning steps improve multi-step accuracy), self-consistency (majority vote over N samples), least-to-most (decompose into subproblems), ReAct (interleave reasoning and tool use), and structured output (constrain model output to a schema). Tool use extends the model with callable functions; agentic frameworks orchestrate multiple tool calls into multi-step workflows.",
+    "code_example": {
+      "language": "python",
+      "code": "# A production-grade prompt with structured output\nimport json\n\ndef build_extraction_prompt(text):\n    return f\"\"\"You are a data extraction system.\n\nExtract information from the text below and return ONLY valid JSON\nmatching this schema:\n\n{{\n  \"person\": string,\n  \"company\": string | null,\n  \"sentiment\": \"positive\" | \"neutral\" | \"negative\",\n  \"key_points\": string[]\n}}\n\nDo not include any other text.\n\nText:\n{text}\n\nJSON:\"\"\"\n\ntext = \"\"\"Rahul from Acme Corp praised the new release,\nsaying it was a huge step forward for the team.\"\"\"\n\nprompt = build_extraction_prompt(text)\nprint(prompt)\n\n# The model's output would be parsed and validated, e.g., with pydantic:\n# class Extraction(BaseModel):\n#     person: str\n#     company: str | None\n#     sentiment: Literal[\"positive\", \"neutral\", \"negative\"]\n#     key_points: list[str]",
+      "universal_explanation": "The prompt specifies the exact JSON schema the model must produce. In production, this output is parsed and validated against a typed schema. If validation fails, the system retries with the error included in the prompt. This is how LLMs become reliable components of larger systems."
+    },
+    "common_mistakes": [
+      "Using chain-of-thought for simple tasks: it adds tokens and latency with no accuracy gain when the task is already easy.",
+      "Forgetting to validate structured output: even with JSON mode, always validate against a schema and handle failures.",
+      "Over-trusting the model's tool calls: implement the tools defensively — validate arguments, handle errors gracefully.",
+      "Treating prompts as code without version control: prompts are as important as code and should be versioned, tested, and reviewed."
+    ],
+    "real_world_usage": "OpenAI's function calling, Anthropic's tool use, and Gemini's function calling all use this pattern. LangChain and LlamaIndex build higher-level orchestration on top. Customer support bots, code assistants, and AI search products all use structured output to route between subsystems. Agentic frameworks like AutoGPT and CrewAI chain tool calls into multi-step workflows. Every production LLM app uses at least two of these techniques.",
+    "key_takeaways": [
+      "Chain-of-thought prompting improves multi-step reasoning accuracy.",
+      "Self-consistency samples multiple paths and takes the majority.",
+      "Structured output (JSON mode, function calling) makes LLMs reliable components.",
+      "Tool use lets models call external functions and become agents.",
+      "Production systems combine multiple techniques and always validate output."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Asking a model to 'think step by step' is called ___ prompting.",
+      "options": ["chain-of-thought", "zero-shot", "recursive"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You need high confidence on a math problem. Which technique reduces errors most reliably?",
+      "choices": [
+        "Sample the model once with low temperature",
+        "Sample the model 5 times and take the majority answer",
+        "Ask the model to be more confident"
+      ],
+      "correct_index": 1,
+      "reveal": "Self-consistency: multiple samples with different reasoning paths. If they converge on the same answer, confidence increases. This is called majority voting or self-consistency."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why is JSON mode important for production systems?",
+      "choices": [
+        "JSON is faster to generate",
+        "The output is parseable and can be validated against a schema",
+        "It looks more professional"
+      ],
+      "correct_index": 1,
+      "reveal": "Structured output lets downstream systems reliably parse the model's response and validate it. Free-form text output cannot be handled reliably at scale."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Using chain-of-thought prompt\ntask = \"What is 2 + 2?\"\nprompt = f\"\"\"{task}\n\nLet's think step by step. Break this into 5 stages, \nverify with alternate methods, and consider edge cases.\n\nProvide a full formal proof.\"\"\"\n\nprint(prompt)",
+      "wrong_line": 4,
+      "explanation": "Chain-of-thought is wasted on trivial tasks. Asking the model to break '2+2' into 5 stages, verify with alternate methods, and produce a formal proof adds latency, cost, and no accuracy gain. Reserve chain-of-thought for genuinely multi-step problems."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what tool use allows an LLM to do and why it matters.",
+      "rubric": "Should mention that the model can call functions with arguments instead of guessing, allowing it to fetch real data, execute code, or interact with external systems. This makes it more reliable than pure generation.",
+      "min_words": 30
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Sampling a model multiple times and taking the majority answer is called ___.",
+      "options": ["self-consistency", "beam search", "ensemble"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which technique lets an LLM query a database or call an external API?",
+      "choices": ["Chain-of-thought", "Tool use (function calling)", "Self-consistency"],
+      "correct_index": 1,
+      "reveal": "Tool use / function calling lets the model invoke named functions with typed arguments, so it can fetch real data instead of guessing."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "# Parsing LLM output in production\nresponse = \"The sentiment is positive.\"\n# Assume the model always returns exactly this format\nsentiment = response.split()[-1]\nprint(sentiment)",
+      "wrong_line": 3,
+      "explanation": "Parsing free-form text with split() is fragile — the model may return different wording, add punctuation, or produce multi-line output. Production systems should use structured output (JSON mode) and validate with a schema, not string manipulation."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Define the task and expected output schema",
+        "Write the prompt with role, task, context, format",
+        "Add examples if the pattern is not obvious",
+        "Send to the model and receive output",
+        "Validate the output against the schema and retry on failure"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain when self-consistency is worth the extra cost.",
+      "rubric": "Should mention that self-consistency is worth it for high-stakes reasoning tasks (math, medical, legal) where the cost of error is high; for simple tasks it is overkill.",
+      "min_words": 20
+    }
+  ]
+}

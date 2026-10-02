@@ -1,0 +1,133 @@
+{
+  "concept_slug": "linear-algebra",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Linear Algebra: Vectors",
+    "summary": "A vector is a list of numbers that represents something. Every AI model is built out of vectors and the simple operations between them.",
+    "learning_goals": [
+      "Understand what a vector is",
+      "See how vectors represent real things (images, words, features)",
+      "Add vectors and multiply by a scalar",
+      "Understand why AI uses vectors everywhere"
+    ],
+    "long_intro": "If you remember one idea from AI mathematics, make it this: everything is a vector. An image is a vector of pixel intensities. A word is a vector of learned numbers. A user is a vector of preferences. A model's internal state is a vector. Once you see the world as vectors, most AI becomes a matter of moving vectors around in space. This lesson introduces vectors without any math anxiety — we will build them from everyday examples, and you will see that the operations between vectors are exactly what you would expect.",
+    "deep_explanation": [
+      {
+        "heading": "What a vector is",
+        "body": "A vector is an ordered list of numbers. That is it. [3, 5, 2] is a vector. [0.5, -0.2, 0.8, 1.0] is a vector. The length of the list is called the vector's dimension. A 3-dimensional vector has three numbers, a 100-dimensional vector has one hundred. In AI, vectors typically have hundreds or thousands of dimensions because they are representing complex things. Do not let the high dimension scare you — the operations are the same whether you have 3 numbers or 3000.",
+        "code": "v = [3, 5, 2]\nprint(len(v))    # shows 3\nprint(v[0])      # shows 3\nprint(v[2])      # shows 2"
+      },
+      {
+        "heading": "Vectors represent real things",
+        "body": "A vector becomes meaningful when we decide what each number means. A grayscale image of 28 by 28 pixels is naturally a vector of 784 numbers, each one a brightness value between 0 and 255. A user's movie preferences could be a vector where each number is a rating of a different genre. A word in a language model becomes a vector where each number captures some learned aspect of its meaning. The vector itself is just numbers. The meaning comes from what the numbers represent.",
+        "code": "# An image as a vector (simplified: 4 pixels)\nimage = [12, 240, 87, 155]\nprint(\"pixel values:\", image)"
+      },
+      {
+        "heading": "Adding vectors and scaling them",
+        "body": "Two operations you will see constantly: adding two vectors (element by element) and multiplying a vector by a single number (called a scalar). Adding [1, 2, 3] and [4, 5, 6] gives [5, 7, 9]. Multiplying [1, 2, 3] by 2 gives [2, 4, 6]. These two operations are the atoms of every neural network. When a network combines information from two sources, it adds the vectors. When it amplifies a signal, it scales by a scalar. Once you can add and scale vectors, you can read most of what a neural network is doing at the arithmetic level.",
+        "code": "a = [1, 2, 3]\nb = [4, 5, 6]\nsum_vec = [a[0] + b[0], a[1] + b[1], a[2] + b[2]]\nprint(sum_vec)   # shows [5, 7, 9]\n\nscaled = [2 * x for x in a]\nprint(scaled)    # shows [2, 4, 6]"
+      }
+    ],
+    "formal_definition": "A vector is an element of R^n for some dimension n, written as an ordered tuple of n real numbers. The two fundamental operations are addition (element-wise) and scalar multiplication. The set of all n-dimensional vectors with these operations forms a vector space. Distance between vectors is measured by norms; similarity is measured by the dot product.",
+    "code_example": {
+      "language": "python",
+      "code": "user_a = [5, 3, 1]   # ratings for three genres\nuser_b = [4, 2, 2]\n\ncombined = [user_a[i] + user_b[i] for i in range(3)]\nprint(combined)   # shows [9, 5, 3]\n\nscaled = [2 * x for x in user_a]\nprint(scaled)     # shows [10, 6, 2]",
+      "universal_explanation": "Two users are each represented by a 3-dimensional vector of ratings. Adding the vectors gives a combined preference profile. Scaling one user's vector by 2 doubles all their ratings. Both operations work element by element."
+    },
+    "common_mistakes": [
+      "Adding vectors of different lengths: [1, 2] + [1, 2, 3] is not defined. Both vectors must have the same dimension.",
+      "Confusing the dimension with the number of vectors: a vector of dimension 5 has 5 numbers; it is still one vector.",
+      "Thinking that [1, 2, 3] and [3, 2, 1] are the same vector: order matters. Vectors are ordered.",
+      "Assuming that multiplying a vector by 2 changes only the first element: scalar multiplication applies to every element."
+    ],
+    "real_world_usage": "In recommendation systems like Netflix, every user is a vector of preferences and every movie is a vector of features. The system recommends movies whose vectors are close to the user's vector. In image recognition, every image is flattened into a vector before entering the network. In language models, every word becomes a vector called an embedding. The reason vectors are universal is that they let you compare, combine, and transform information using simple operations.",
+    "key_takeaways": [
+      "A vector is an ordered list of numbers.",
+      "The dimension is how many numbers the vector contains.",
+      "Vectors represent anything we choose to encode as numbers.",
+      "Adding vectors is element by element.",
+      "Multiplying by a scalar affects every element."
+    ],
+    "estimated_minutes": 8
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "The vector [7, 2, 9, 4] has a dimension of ___.",
+      "options": ["3", "4", "16"],
+      "correct_index": 1
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "A 28 by 28 grayscale image is naturally represented as a vector of dimension ___.",
+      "options": ["28", "56", "784"],
+      "correct_index": 2
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What is [2, 4, 6] + [1, 1, 1]?",
+      "choices": ["[3, 5, 7]", "[3, 5]", "[2, 4, 6, 1, 1, 1]"],
+      "correct_index": 0,
+      "reveal": "Addition is element by element: 2+1=3, 4+1=5, 6+1=7."
+    }},
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What is [3, 6, 9] multiplied by 3?",
+      "choices": ["[3, 6, 9, 3, 6, 9, 3, 6, 9]", "[9, 18, 27]", "[6, 9, 12]"],
+      "correct_index": 1,
+      "reveal": "Multiplying by a scalar affects every element: 3*3=9, 6*3=18, 9*3=27."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what a vector is and give one example of something in AI that is represented as a vector.",
+      "rubric": "Should say a vector is an ordered list of numbers, and give an example like an image, a word embedding, or a user's preferences.",
+      "min_words": 15
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The vector [5, 10, 15, 20, 25] has dimension ___.",
+      "options": ["5", "25", "75"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What is [1, 2, 3] + [10, 20, 30]?",
+      "choices": ["[11, 22, 33]", "[11, 22]", "[10, 20, 30, 1, 2, 3]"],
+      "correct_index": 0,
+      "reveal": "Element by element: 1+10=11, 2+20=22, 3+30=33."
+    },
+    {
+      "type": "predict",
+      "question": "What is [4, 8, 12] multiplied by 0.5?",
+      "choices": ["[2, 4, 6]", "[4.5, 8.5, 12.5]", "[0.5, 0.5, 0.5]"],
+      "correct_index": 0,
+      "reveal": "Each element is multiplied by 0.5: 4*0.5=2, 8*0.5=4, 12*0.5=6."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Start with two vectors of the same dimension",
+        "Check that their lengths match",
+        "Add the corresponding elements",
+        "Store the result as a new vector of the same dimension"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "Why do AI models use vectors instead of storing data as tables or lists of separate values?",
+      "rubric": "Should mention that vectors let us do math on data (add, scale, compare), and that this is what neural networks require.",
+      "min_words": 15
+    }
+  ]
+}

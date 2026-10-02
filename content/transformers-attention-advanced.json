@@ -1,0 +1,159 @@
+{
+  "concept_slug": "transformers-attention",
+  "tier": "advanced",
+  "concept_note": {
+    "title": "Transformers & Attention: Context as a Weighted Average",
+    "summary": "Scaled dot-product attention, multi-head projections, positional encodings, and causal masking — the four ideas that make the transformer work, plus the quadratic cost that bounds it.",
+    "learning_goals": [
+      "Compute scaled dot-product attention from Q, K and V",
+      "Explain why the 1/sqrt(d_k) scaling factor is necessary",
+      "Describe how multi-head attention partitions the representation",
+      "Understand positional encodings and causal masking"
+    ],
+    "long_intro": "Attention is a lookup, not a recurrence. Given a query, it scores every key in the sequence, turns those scores into a distribution, and returns the corresponding average of the values. Everything else in a transformer is refinement. The scaling factor keeps that distribution from saturating, multiple heads let the model look up several unrelated things at once, positional encodings supply the word order that attention is structurally blind to, and causal masking turns the same layer into an autoregressive decoder. What remains is the bill: every token attends to every other token, so the cost grows with the square of the sequence length. Understanding both the mechanism and the cost is what lets you reason about why context windows used to be expensive.",
+    "deep_explanation": [
+      {
+        "heading": "Scaled dot-product attention",
+        "body": "Attention computes softmax(QKᵀ / √d_k) V. The query and key matrices are multiplied to get one score per token pair, divided by the square root of the key dimension, and softmaxed row-wise into weights that sum to one. The output is the weighted average of the value rows. The scaling is not cosmetic: if q and k components are roughly independent unit-variance, the dot product has variance d_k, so unscaled scores grow like √d_k. Push that through a softmax and it saturates — one token takes essentially all the weight, the derivatives of the softmax collapse toward zero, and learning stalls. Dividing by √d_k restores unit-variance scores and keeps the softmax in its sensitive middle region.",
+        "code": "import numpy as np\n\n# Why divide by sqrt(d_k): the dot product's variance scales with d_k\nd_k = 64\nq = np.random.randn(d_k)\nk = np.random.randn(d_k)\n\nprint('unscaled:', round(q @ k, 1))\nprint('scaled:  ', round((q @ k) / np.sqrt(d_k), 1))\n# The unscaled logpt can reach +/-16, which saturates softmax"
+      },
+      {
+        "heading": "Multi-head attention",
+        "body": "One attention head is a single weighted average, which makes it a poor multi-purpose lookup: averaging tokens collapses the information you may need later. Multi-head attention instead projects the model into h smaller subspaces, runs an independent attention in each, then concatenates the results and projects them back. With d_k = d_model / h, the total computation is close to a single full-width attention while each head sees a different slice. Empirically the heads specialise — some track syntactic dependencies, some track coreference, some act as induction heads that copy a previous token. Notation-wise, head_i = Attention(QW_i^Q, KW_i^K, VW_i^V) and the outputs are concatenated and mixed by W^O.",
+        "code": "d_model = 512\nn_heads = 8\nd_k = d_model // n_heads\n\nprint('model dim: ', d_model)\nprint('per-head:  ', d_k)\n# Each head works on a 64-dim slice; 8 of them cover all 512 dims\n# so total cost stays close to one full-width attention"
+      },
+      {
+        "heading": "Positional encodings",
+        "body": "Self-attention is permutation equivariant: feed the tokens in a different order and the outputs come out permuted in the same way, with no notion of which token came first. That is a real problem for language, where 'the dog bit the man' and 'the man bit the dog' contain identical token sets. Positional information has to be injected. The original paper added a fixed sinusoidal signal, sin(pos / 10000^(2i/d_model)) and its cosine counterpart, where each frequency band encodes a different scale of position and relative offsets stay consistent across lengths. Most later models instead use a learned absolute embedding, which is simpler and works fine up to a fixed maximum length. Either way the encoding is added to the token embedding before the first block.",
+        "code": "import math\n\nd_model = 512\npos = 7\n\ndef pe(pos, i, d_model):\n    angle = pos / (10000 ** (2 * i / d_model))\n    return math.sin(angle) if i % 2 == 0 else math.cos(angle)\n\nfor i in range(4):\n    print(f'component {i}: {pe(pos, i, d_model): .4f}')\n# Different i give different frequencies: i=0 encodes coarse\n# position, larger i encode fine-grained position"
+      },
+      {
+        "heading": "Causal masking and the quadratic cost",
+        "body": "Decoder-only models like GPT are trained to predict the next token from the tokens that came before it. A single forward pass handles every position at once, which would otherwise let a position see its own future answer, so the attention matrix is masked: score S_ij is set to negative infinity whenever j > i, before the softmax, so those weights become exactly zero. Decoder-only transformers do not compute a recurrence, but the autoregressive objective is still sequential at generation time. The cost of self-attention is O(n²d) time and O(n²) memory in sequence length, because every pair of tokens produces a score. This quadratic term is the main scaling limit, and it is what FlashAttention, sliding-window attention, and state-space models like Mamba are all trying to avoid.",
+        "code": "import numpy as np\n\n# Causal mask: position i may attend to 0..i, never to the future\nn = 4\nmask = np.tril(np.ones((n, n), dtype=bool))\nprint(mask.astype(int))\n\n# With d_model = 512 and n = 1024 the score matrix alone holds\n# 1024 x 1024 values, and the cost doubles again for every\n# doubling of the context length"
+      }
+    ],
+    "formal_definition": "Attention(Q, K, V) = softmax(QKᵀ / √d_k) V, where d_k is the key dimension and the softmax is taken over the key axis. MultiHead(Q, K, V) = Concat(head_1, …, head_h) W^O with head_i = Attention(Q W_i^Q, K W_i^K, V W_i^V) and d_k = d_model / h. Sinusoidal positional encoding: PE(pos, 2i) = sin(pos / 10000^(2i / d_model)) and PE(pos, 2i+1) = cos(pos / 10000^(2i / d_model)). Causal masking replaces score S_ij by -inf for j > i before the softmax. Self-attention costs O(n² d_model) time and O(n²) memory for sequence length n.",
+    "code_example": {
+      "language": "python",
+      "code": "import numpy as np\n\n\ndef softmax(x, axis=-1):\n    # Subtracting the max keeps exp() from overflowing\n    x = x - x.max(axis=axis, keepdims=True)\n    e = np.exp(x)\n    return e / e.sum(axis=axis, keepdims=True)\n\n\ndef scaled_dot_product_attention(Q, K, V, mask=None):\n    d_k = Q.shape[-1]\n    scores = Q @ K.swapaxes(-2, -1) / np.sqrt(d_k)\n    if mask is not None:\n        # Negative infinity becomes exactly zero weight after softmax\n        scores = np.where(mask, scores, -np.inf)\n    weights = softmax(scores, axis=-1)\n    return weights @ V, weights\n\n\nQ = np.array([[[1.0, 0.0]]])\nK = np.array([[[1.0, 0.0], [0.0, 1.0]]])\nV = np.array([[[1.0, 0.0], [0.0, 1.0]]])\n\nout, weights = scaled_dot_product_attention(Q, K, V)\nprint('weights:', weights.round(3))  # [[0.67 0.33]]\nprint('output: ', out.round(3))      # [[0.67 0.33]]\n\n# The output is a convex combination of the value rows",
+      "universal_explanation": "The whole layer is one matrix multiply, one masking step, one softmax, and another matrix multiply. Q and K decide how much each position should look at each other position, and V decides what it finds there. The returned row is a weighted average of V, so if a row is dominated by a single weight the output for that position collapses toward one source token — which is the failure the sqrt(d_k) scaling exists to prevent."
+    },
+    "common_mistakes": [
+      "Omitting the 1/sqrt(d_k) factor: scores grow with the key dimension, the softmax saturates, and gradients through it approach zero.",
+      "Applying the causal mask after the softmax: weights get zeroed but the surviving ones are not renormalised, so the output is no longer a proper weighted average.",
+      "Scaling by 1/sqrt(d_model) instead of 1/sqrt(d_k): it is the key dimension, not the model dimension, that sets the variance of the dot product.",
+      "Assuming attention sees order by itself: self-attention is permutation equivariant, which is precisely why a positional encoding has to be added."
+    ],
+    "real_world_usage": "Every transformer since 2017 is this mechanism. GPT, Claude, Gemini, and Llama all use multi-head causal self-attention with learned positional information. The quadratic cost is why long context was expensive for years and why FlashAttention, sliding-window attention, and state-space models like Mamba exist — they attack the quadratic term from different angles. Whisper, ViT, and AlphaFold all use variants of the same scaled dot-product attention.",
+    "key_takeaways": [
+      "Attention is a softmax-weighted average of values, with weights from query-key similarity.",
+      "Dividing by sqrt(d_k) keeps the softmax out of saturation.",
+      "Multi-head attention runs several lookups in parallel subspaces and concatenates them.",
+      "Positional encoding is required because attention itself ignores order.",
+      "Causal masking is what makes decoder-only training possible.",
+      "The quadratic cost in sequence length is the main scaling limit."
+    ],
+    "estimated_minutes": 16
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Scaled dot-product attention divides the QK product by ___ so the softmax stays in its sensitive range.",
+      "options": ["sqrt(d_k)", "d_k", "h"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What breaks if the 1/sqrt(d_k) scaling is removed from attention?",
+      "choices": [
+        "Nothing — the softmax is scale invariant",
+        "Scores grow with d_k, the softmax saturates, and its gradients shrink toward zero",
+        "The attention weights stop summing to one"
+      ],
+      "correct_index": 1,
+      "reveal": "Softmax is shift invariant but not scale invariant. Unscaled dot products have variance d_k, so scores grow like sqrt(d_k); softmax pushes to a one-hot and the local derivative collapses. The weights still sum to one — that part is fine."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why does a transformer need a positional encoding at all?",
+      "choices": [
+        "Attention is permutation equivariant and otherwise has no way to know the order of the tokens",
+        "It speeds up the QK product",
+        "It reduces the memory used by the score matrix"
+      ],
+      "correct_index": 0,
+      "reveal": "Shuffle the input and the outputs shuffle with it — the operation is permutation equivariant, so 'dog bit man' and 'man bit dog' are indistinguishable. A positional signal added to the embeddings breaks that symmetry. Masking is a separate mechanism."
+    }},
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Implement scaled dot-product attention in NumPy. Write a numerically stable softmax (subtract the row max before exponentiating) and a scaled_dot_product_attention(Q, K, V, mask=None) function that computes softmax(Q @ K^T / sqrt(d_k)) V, applying the boolean mask by replacing disallowed scores with -inf before the softmax. Return both the output and the attention weights. Test on Q = [[[1, 0]]], K = [[[1, 0], [0, 1]]], V = [[[1, 0], [0, 1]]], which should give weights and output both about [0.67, 0.33].",
+      "starter_code": "import numpy as np\n\n\ndef softmax(x, axis=-1):\n    # TODO: subtract the max along axis, exponentiate, normalise\n    pass\n\n\ndef scaled_dot_product_attention(Q, K, V, mask=None):\n    d_k = Q.shape[-1]\n    # TODO: scores = Q @ K.swapaxes(-2, -1) / sqrt(d_k)\n    # TODO: if mask is not None, set disallowed scores to -inf\n    # TODO: return softmax(scores) @ V and the weights\n    pass\n\n\nQ = np.array([[[1.0, 0.0]]])\nK = np.array([[[1.0, 0.0], [0.0, 1.0]]])\nV = np.array([[[1.0, 0.0], [0.0, 1.0]]])\nout, w = scaled_dot_product_attention(Q, K, V)\nprint(w.round(3))  # [[0.67 0.33]]\n",
+      "reference_code": "import numpy as np\n\n\ndef softmax(x, axis=-1):\n    x = x - x.max(axis=axis, keepdims=True)\n    e = np.exp(x)\n    return e / e.sum(axis=axis, keepdims=True)\n\n\ndef scaled_dot_product_attention(Q, K, V, mask=None):\n    d_k = Q.shape[-1]\n    scores = Q @ K.swapaxes(-2, -1) / np.sqrt(d_k)\n    if mask is not None:\n        scores = np.where(mask, scores, -np.inf)\n    weights = softmax(scores, axis=-1)\n    return weights @ V, weights\n\n\nQ = np.array([[[1.0, 0.0]]])\nK = np.array([[[1.0, 0.0], [0.0, 1.0]]])\nV = np.array([[[1.0, 0.0], [0.0, 1.0]]])\n\nout, weights = scaled_dot_product_attention(Q, K, V)\nprint('weights:', weights.round(3))  # [[0.67 0.33]]\nprint('output: ', out.round(3))      # [[0.67 0.33]]\n\nn = 4\ncausal = np.tril(np.ones((n, n), dtype=bool))\nprint('causal mask applied:', causal.shape)",
+      "rubric": "Needs a softmax that subtracts the max along the axis before exponentiating and then normalises, and an attention function that swaps the last two axes of K, scales the scores by 1/sqrt(d_k), applies the mask as -inf before the softmax, and returns both weights @ V and the weights. The test case must produce weights and output of about [0.67, 0.33].",
+      "language": "python",
+      "min_lines": 12
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In a paragraph, explain why a decoder-only transformer must mask the attention matrix, and how the masking interacts with the quadratic cost of self-attention.",
+      "rubric": "Should mention: masking sets future positions' scores to -inf before the softmax so a position cannot attend to its own answer, which is what makes parallel next-token training valid; the mask removes entries but not the compute, since the n x n score matrix is still formed; so the O(n^2 d) time and O(n^2) memory cost remains the scaling bottleneck that motivates FlashAttention, sliding windows, and state-space models.",
+      "min_words": 45
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "In multi-head attention, each head operates on a slice of width d_k = ___.",
+      "options": ["d_model / h", "d_model * h", "h / d_model"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What is the main cost of self-attention as the sequence length n grows?",
+      "choices": [
+        "Linear in n, because each token is processed once",
+        "Quadratic in n, because every token pair produces a score",
+        "Constant in n, because attention is a fixed-size lookup"
+      ],
+      "correct_index": 1,
+      "reveal": "The score matrix is n x n, so both time and memory grow quadratically. Everything else about attention is linear in n; the pairwise interaction is the bottleneck."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Compute the scores Q K^T and scale them by 1/sqrt(d_k)",
+        "Apply the causal mask, setting future positions to -inf",
+        "Apply softmax over the key axis to obtain weights that sum to one",
+        "Return the weights multiplied by V"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "predict",
+      "question": "Which statement about attention weights is true?",
+      "choices": [
+        "They sum to one per query row, so the output is a convex combination of value rows",
+        "They are independent of the queries",
+        "They are larger for keys with larger values"
+      ],
+      "correct_index": 0,
+      "reveal": "The softmax runs over the key axis for each query row, so each row of weights sums to one and the output row is a weighted average of V. A saturated softmax producing near one-hot rows is the failure the sqrt(d_k) scaling prevents."
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why multi-head attention uses several heads instead of one.",
+      "rubric": "Should mention that a single head is one weighted average and tends to collapse what it retrieves; multiple heads project into separate subspaces, each performing an independent lookup, so different heads can capture different relationships (syntax, coreference, copying) before being concatenated and projected back.",
+      "min_words": 25
+    }
+  ]
+}

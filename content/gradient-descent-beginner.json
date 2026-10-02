@@ -1,0 +1,154 @@
+{
+  "concept_slug": "gradient-descent",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Gradient Descent: Finding the Lowest Point",
+    "summary": "Gradient descent is how AI models learn. It repeatedly nudges parameters in the direction that reduces the loss.",
+    "learning_goals": [
+      "Understand gradient descent as iterative loss reduction",
+      "See the intuition of 'rolling downhill'",
+      "Understand what the learning rate controls",
+      "Read a simple gradient descent loop in Python"
+    ],
+    "long_intro": "You know that AI models are trained by reducing a loss function. But how do you actually reduce it? The answer is gradient descent — one of the most important algorithms in all of machine learning. The idea is simple: start with a guess, see which way makes the loss worse, and move in the opposite direction. Repeat many times. The loss gets smaller. This is how every neural network, every regression model, and every modern AI system is trained. In this lesson you will see the intuition, walk through a simple example, and understand what 'learning rate' means.",
+    "deep_explanation": [
+      {
+        "heading": "The intuition: rolling downhill",
+        "body": "Imagine you are standing on a hill in fog, and you want to reach the lowest point in the valley. You cannot see far, but you can feel the slope beneath your feet. So you take a small step in the direction that goes downhill. Then you feel the slope again, take another step, and repeat. If you do this many times, you end up at the bottom. Gradient descent is exactly this: the 'hill' is the loss function, and the 'slope' is the gradient. Each step moves the parameters slightly in the direction that reduces the loss.",
+        "code": "# The mental model in code\n# x is our parameter. loss(x) tells us how bad x is.\n# We want to find the x that minimises loss.\n\nx = 5.0   # start somewhere\n\n# for a simple bowl-shaped loss, the gradient is 2*x\nfor step in range(10):\n    gradient = 2 * x          # slope at x\n    x = x - 0.1 * gradient    # step downhill\n\nprint(x)   # approaches 0 (the minimum)"
+      },
+      {
+        "heading": "The gradient: which way is downhill",
+        "body": "The gradient of a function at a point tells you the direction of steepest ascent — the direction that increases the function the fastest. To reduce the function, you move in the opposite direction: subtract the gradient. This is why gradient descent is sometimes called 'steepest descent'. In mathematical notation, the update rule is: x_new = x_old - learning_rate * gradient. The minus sign is what makes it 'descent' rather than 'ascent'.",
+        "code": "# A loss function and its gradient\n# loss(x) = x^2\n# gradient(x) = 2*x\n\ndef loss(x):\n    return x ** 2\n\ndef gradient(x):\n    return 2 * x\n\nx = 4.0\nprint(f\"loss at x={x}: {loss(x)}\")      # 16.0\nprint(f\"gradient at x={x}: {gradient(x)}\")  # 8.0 (positive, so decrease x)"
+      },
+      {
+        "heading": "The learning rate: how big each step is",
+        "body": "The learning rate (often written as α or lr) controls how big each step is. A large learning rate takes big steps — faster progress, but risk of overshooting the minimum and oscillating. A small learning rate takes tiny steps — safe, but the training takes forever. Finding the right learning rate is one of the most important hyperparameter choices in AI. Typical values range from 0.1 (for simple problems) down to 0.0001 (for large neural networks).",
+        "code": "def descend(lr, steps=20):\n    x = 5.0\n    for _ in range(steps):\n        x = x - lr * (2 * x)\n    return x\n\nprint(\"lr=0.01:\", round(descend(0.01), 4))   # slow, close to 5\nprint(\"lr=0.1: \", round(descend(0.1), 4))    # nice, near 0\nprint(\"lr=0.9: \", round(descend(0.9), 4))    # fast, near 0\nprint(\"lr=1.5: \", round(descend(1.5), 4))    # diverges!"
+      }
+    ],
+    "formal_definition": "Gradient descent is an iterative optimisation algorithm. Given a differentiable function L(θ) and an initial parameter θ_0, it updates θ_{t+1} = θ_t - η ∇L(θ_t), where η is the learning rate and ∇L is the gradient of L with respect to θ. Under suitable conditions, the sequence θ_t converges to a local minimum of L. Stochastic gradient descent (SGD) approximates ∇L using a random subset of the data, which makes the algorithm scale to large datasets.",
+    "code_example": {
+      "language": "python",
+      "code": "# Find the minimum of loss(x) = (x - 3)^2\ndef loss(x):\n    return (x - 3) ** 2\n\ndef gradient(x):\n    return 2 * (x - 3)\n\nx = 0.0\nlearning_rate = 0.1\n\nfor step in range(20):\n    g = gradient(x)\n    x = x - learning_rate * g\n\nprint(\"x:\", round(x, 4))   # approaches 3.0",
+      "universal_explanation": "The minimum of (x - 3)^2 is at x = 3. Starting from x = 0, gradient descent repeatedly steps in the direction that reduces the loss. After 20 iterations, x is very close to 3. This is exactly the process used to train every neural network — the 'x' is just replaced by millions of parameters."
+    },
+    "common_mistakes": [
+      "Using a learning rate that is too large: the algorithm overshoots the minimum and diverges, with loss growing instead of shrinking.",
+      "Using a learning rate that is too small: training takes forever, and you might think nothing is happening.",
+      "Forgetting the minus sign: moving in the direction of the gradient maximises the loss, which is the opposite of what you want.",
+      "Assuming gradient descent finds the global minimum: it only guarantees a local minimum. For non-convex losses, the starting point matters."
+    ],
+    "real_world_usage": "Every modern AI model is trained with some variant of gradient descent. GPT, Claude, Gemini, Stable Diffusion, ResNet — all of them use stochastic gradient descent or one of its improvements (Adam, AdamW, RMSProp). The training loop in every framework (PyTorch, TensorFlow, JAX) computes gradients and updates parameters using exactly the formula from this lesson. When you see 'optimizer.step()' in a training script, that call is doing one iteration of gradient descent.",
+    "key_takeaways": [
+      "Gradient descent is how AI models are trained.",
+      "It works by repeatedly moving parameters in the direction that reduces the loss.",
+      "The learning rate controls how big each step is.",
+      "Too large a learning rate diverges; too small a rate is slow.",
+      "Every modern AI training loop uses gradient descent."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Gradient descent moves parameters in the direction that ___ the loss.",
+      "options": ["reduces", "increases", "ignores"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If the gradient at x is positive (+5), which way should we move x to reduce loss?",
+      "choices": ["Increase x", "Decrease x", "Keep x the same"],
+      "correct_index": 1,
+      "reveal": "The gradient points toward increasing loss. To reduce loss, move opposite: decrease x."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Write a loop that runs gradient descent for 5 steps on the simple loss function f(x) = x^2. Start from x = 5.0. Use a learning rate of 0.1. On each step, print the current value of x. The final value of x should be small (close to 0).",
+      "starter_code": "x = 5.0\nlearning_rate = 0.1\n\n# Write a loop that runs 5 steps\n# Each step: compute gradient of x^2 (which is 2*x)\n# Then update x by subtracting learning_rate * gradient\n# Print x after each update\n",
+      "reference_code": "x = 5.0\nlearning_rate = 0.1\n\nfor step in range(5):\n    gradient = 2 * x\n    x = x - learning_rate * gradient\n    print(x)",
+      "rubric": "The code should have a loop that runs 5 times, computes the gradient of x^2 as 2*x, updates x using gradient descent, and prints x each iteration. Final x should be around 1.6 (5 × 0.8^5).",
+      "language": "python",
+      "min_lines": 5
+    }},
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If the learning rate is extremely large (say 10), what happens during training?",
+      "choices": [
+        "Training converges quickly",
+        "Training diverges — parameters jump wildly and loss grows",
+        "Training is unaffected"
+      ],
+      "correct_index": 1,
+      "reveal": "Too large a step size causes the parameters to overshoot the minimum repeatedly, making the loss grow instead of shrink. This is called divergence."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "x = 5.0\nlr = 0.1\n\nfor step in range(10):\n    g = 2 * x\n    x = x + lr * g   # update\n\nprint(x)",
+      "wrong_line": 6,
+      "explanation": "Line 6 uses '+' instead of '-'. This moves x in the direction that increases loss — the opposite of what gradient descent should do. The correct update is 'x = x - lr * g'."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, describe what the learning rate controls and what happens when it is set too high or too low.",
+      "rubric": "Should explain that the learning rate is the step size, too high causes divergence/overshooting, too low causes slow training.",
+      "min_words": 20
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The parameter that controls the step size in gradient descent is called the ___ rate.",
+      "options": ["learning", "update", "step"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "At a point on the loss curve, the gradient is negative. Which direction should we move to reduce loss?",
+      "choices": [
+        "Increase the parameter (move right)",
+        "Decrease the parameter (move left)",
+        "No change needed"
+      ],
+      "correct_index": 0,
+      "reveal": "Gradient descent subtracts the gradient. If the gradient is negative, subtracting it (x - lr * negative) means increasing x."
+    },
+    {
+      "type": "predict",
+      "question": "You start training and the loss starts increasing instead of decreasing. What is the most likely cause?",
+      "choices": [
+        "The learning rate is too small",
+        "The learning rate is too large",
+        "The data is wrong"
+      ],
+      "correct_index": 1,
+      "reveal": "Rising loss almost always means the learning rate is too large — the model is overshooting the minimum every step."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Start with an initial guess for the parameter",
+        "Compute the gradient of the loss at the current parameter",
+        "Update the parameter by moving opposite to the gradient",
+        "Repeat until the loss stops improving"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain the analogy of gradient descent as 'rolling downhill' on a hill.",
+      "rubric": "Should mention that the loss surface is like a landscape, and gradient descent moves step by step toward the lowest point (minimum) without being able to see the whole landscape.",
+      "min_words": 20
+    }
+  ]
+}

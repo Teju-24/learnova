@@ -1,0 +1,143 @@
+{
+  "concept_slug": "supervised-learning",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Supervised Learning: Learning from Examples",
+    "summary": "Supervised learning is how most AI models are trained. You show the model many examples with correct answers, and it learns the pattern.",
+    "learning_goals": [
+      "Understand what supervised learning means",
+      "See the difference between inputs and labels",
+      "Understand what a model learns from examples",
+      "See why supervised learning is the foundation of modern AI"
+    ],
+    "long_intro": "Most AI you interact with — face unlock, spam filters, YouTube recommendations, voice assistants — is built using supervised learning. The idea is simple: instead of telling the model the rules, you show it thousands of examples with the correct answer attached. The model figures out the rules on its own. This lesson walks through what supervised learning actually is, what a training example looks like, and why this approach has proven so powerful in the last decade.",
+    "deep_explanation": [
+      {
+        "heading": "What supervised learning means",
+        "body": "Supervised learning is training a model by showing it many pairs of (input, correct output). The 'supervised' part refers to the fact that a human (or another system) has already provided the correct answer for each example. The model's job is to find the pattern that maps inputs to outputs, so it can predict the correct output for new inputs it has never seen before. This is called learning, and the pair (input, correct output) is called a training example or a labeled example.",
+        "code": "# A tiny training dataset for spam detection\ntraining_examples = [\n    (\"win a free iphone now\", \"spam\"),\n    (\"meeting at 3pm tomorrow\", \"not spam\"),\n    (\"claim your prize today\", \"spam\"),\n    (\"see you at the conference\", \"not spam\"),\n]\n\nfor email, label in training_examples:\n    print(f\"Email: {email}  →  Label: {label}\")"
+      },
+      {
+        "heading": "Inputs, labels, and features",
+        "body": "The input to a model is sometimes called x, the correct answer is called y, and the goal is to learn a function f such that f(x) = y. In image classification, x is the pixel values of an image, and y is the class label ('cat' or 'dog'). In spam detection, x is the text of the email (converted to numbers), and y is 'spam' or 'not spam'. In recommendation, x is a user's history, and y is whether they clicked the next item. The specific form of x and y varies, but the pattern is always the same: we have examples of correct behavior, and we want the model to imitate that behavior on new data.",
+        "code": "# The (x, y) pair in code\nx = \"win a free iphone now\"   # input (email text)\ny = \"spam\"                    # label (correct answer)\n\nprint(\"Input:\", x)\nprint(\"Label:\", y)"
+      },
+      {
+        "heading": "Training and testing: what the model actually learns",
+        "body": "The model does not memorize the training examples. It learns the underlying pattern. To verify this, we split our labeled data into two parts: a training set (used to learn) and a test set (held back, never seen during training). We train on the first, then check how the model does on the second. If it does well on test data it has never seen, it has learned the pattern. If it does well on training but badly on test, it has memorized — which is called overfitting, a concept we will cover later.",
+        "code": "training_set = [\n    (\"free money now\", \"spam\"),\n    (\"meeting tomorrow\", \"not spam\"),\n]\n\ntest_set = [\n    (\"claim your cash\", \"spam\"),        # never seen during training\n    (\"lunch at noon?\", \"not spam\"),     # never seen during training\n]\n\nprint(f\"Training on {len(training_set)} examples\")\nprint(f\"Testing on {len(test_set)} examples\")"
+      }
+    ],
+    "formal_definition": "Supervised learning is the task of learning a function f: X → Y from a set of labeled examples {(x_1, y_1), ..., (x_n, y_n)}, where each x_i is an input and each y_i is its correct label. The learned function f is then used to predict y for new inputs x. Performance is measured on a held-out test set that was not used during training.",
+    "code_example": {
+      "language": "python",
+      "code": "# A minimal supervised learning example\ntraining = [\n    ({\"height\": 150}, \"short\"),\n    ({\"height\": 170}, \"medium\"),\n    ({\"height\": 190}, \"tall\"),\n]\n\ndef simple_model(height):\n    if height < 160:\n        return \"short\"\n    elif height < 180:\n        return \"medium\"\n    else:\n        return \"tall\"\n\nprint(simple_model(155))   # short\nprint(simple_model(185))   # tall",
+      "universal_explanation": "The training examples define a pattern: heights below 160 are 'short', between 160 and 180 are 'medium', and above 180 are 'tall'. The simple_model function encodes this pattern. In real supervised learning, the pattern is learned automatically instead of written by hand."
+    },
+    "common_mistakes": [
+      "Confusing supervised learning with unsupervised learning: supervised has labels, unsupervised does not.",
+      "Thinking the model stores the training examples: the model learns a pattern, not the examples themselves.",
+      "Training and testing on the same data: performance looks great but tells you nothing about how the model will behave on new data.",
+      "Assuming more labels always helps: bad labels (noise) hurt more than they help. Quality of labels matters more than quantity."
+    ],
+    "real_world_usage": "Gmail's spam filter is trained on millions of (email, spam-or-not) pairs labeled by users. YouTube recommendations are trained on (user history, did-they-click) pairs. Face unlock on your phone was trained on (image, person) pairs. Medical AI models are trained on (image, diagnosis) pairs labeled by doctors. Everywhere you see 'AI' in production, supervised learning is probably involved.",
+    "key_takeaways": [
+      "Supervised learning uses labeled examples (input + correct answer).",
+      "The model learns a pattern, not the examples.",
+      "Training and test data are kept separate to check real learning.",
+      "The same framework applies to images, text, audio, and tabular data.",
+      "Most production AI today is supervised learning."
+    ],
+    "estimated_minutes": 8
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "In supervised learning, the correct answer for a training example is called the ___.",
+      "options": ["label", "input", "model"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "An image classifier is trained on (image, \"cat\") and (image, \"dog\") pairs. What is x and what is y?",
+      "choices": [
+        "x = image, y = \"cat\" or \"dog\"",
+        "x = \"cat\" or \"dog\", y = image",
+        "x and y are both the image"
+      ],
+      "correct_index": 0,
+      "reveal": "The image is the input (x), and the label — 'cat' or 'dog' — is the correct answer (y)."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A model scores 99% on the training set but only 55% on the test set. What is happening?",
+      "choices": [
+        "The model is working well",
+        "The model memorized the training examples instead of learning the pattern",
+        "The test set is wrong"
+      ],
+      "correct_index": 1,
+      "reveal": "Big gap between training and test performance means the model memorized instead of learning. This is called overfitting — a topic we will cover in a future lesson."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what 'supervised' means in supervised learning.",
+      "rubric": "Should mention that the training data is labeled with correct answers — a human or another system provides the 'supervision.'",
+      "min_words": 15
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Supervised learning trains a model on pairs of (input, ___).",
+      "options": ["label", "hidden", "random"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "A model is trained on 1000 labeled examples and tested on 200 held-out examples. Why hold back the 200?",
+      "choices": [
+        "To make training faster",
+        "To check whether the model has learned the pattern or just memorized",
+        "To reduce the number of labels needed"
+      ],
+      "correct_index": 1,
+      "reveal": "Test data must not be seen during training. Otherwise, high accuracy might just mean memorization, not real learning."
+    },
+    {
+      "type": "predict",
+      "question": "Which task is NOT a supervised learning problem?",
+      "choices": [
+        "Predicting house prices from features",
+        "Detecting spam from labeled emails",
+        "Grouping news articles into topics when no labels are given"
+      ],
+      "correct_index": 2,
+      "reveal": "Grouping without labels is unsupervised learning. Clustering news into topics is a classic unsupervised task."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Collect labeled examples (inputs and correct answers)",
+        "Split into training and test sets",
+        "Train a model on the training set",
+        "Evaluate on the test set to measure real performance"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why a model that memorizes the training examples is not useful.",
+      "rubric": "Should mention that memorized models fail on new inputs they have never seen; real usefulness comes from generalizing the pattern, not from memorizing examples.",
+      "min_words": 15
+    }
+  ]
+}

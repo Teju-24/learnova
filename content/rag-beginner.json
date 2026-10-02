@@ -1,0 +1,150 @@
+{
+  "concept_slug": "rag",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "RAG: Teaching AI to Look Things Up",
+    "summary": "Retrieval-Augmented Generation is how modern AI assistants answer questions about things they were never trained on. It combines search with generation.",
+    "learning_goals": [
+      "Understand RAG as a complete system",
+      "See how retrieval feeds into generation",
+      "Understand why RAG is used everywhere",
+      "Read a complete RAG flow in code"
+    ],
+    "long_intro": "You already know that embeddings find relevant documents, and that LLMs generate text. RAG — Retrieval-Augmented Generation — is the practice of combining them into a single system. The user asks a question; the system retrieves relevant documents using embeddings; the LLM answers using those documents as context. This one pattern is behind almost every modern AI assistant: customer support bots, internal knowledge tools, legal research assistants, and even ChatGPT's browsing mode. RAG is how AI stops guessing and starts looking things up.",
+    "deep_explanation": [
+      {
+        "heading": "The three parts of RAG",
+        "body": "Every RAG system has three parts. The first is a knowledge base — a collection of documents you want the AI to be able to answer questions about. The second is a retriever — an embedding-based search system that finds the most relevant documents for a given question. The third is a generator — a language model that produces the answer using the retrieved documents as context. The pattern is: retrieve, augment, generate. The LLM never sees the whole knowledge base — it only sees the few documents that retrieval selected.",
+        "code": "# The three parts of RAG\nknowledge_base = [\n    \"Acme return policy: 30 days for full refund.\",\n    \"Acme shipping: free over $50.\",\n    \"Acme support: support@acme.com.\",\n]\n\ndef retrieve(question, k=2):\n    return knowledge_base[:k]\n\ndef generate(question, docs):\n    context = \"\\n\".join(docs)\n    return f\"[LLM answer using context: {context[:50]}...]\"\n\nquestion = \"How do I get a refund?\"\ndocs = retrieve(question)\nanswer = generate(question, docs)\nprint(answer)"
+      },
+      {
+        "heading": "Why not just fine-tune the model?",
+        "body": "You might wonder: why not just train the model on your documents so it already knows them? Two reasons. First, training is expensive — retraining on every document update is impractical. Second, and more important, models cannot reliably quote from their training data. When you fine-tune a model on facts, it may remember them loosely or blend them with other knowledge. RAG is different: it does not modify the model, it just gives the model the right context at query time. The documents are the ground truth, and the model is forbidden to answer from anything else.",
+        "code": "# Fine-tuning vs RAG for a company's documents\napproaches = {\n    \"Fine-tune\": \"Retrain model on your docs. Expensive. Memory fades. Hard to update.\",\n    \"RAG\":       \"Look up docs at query time. Cheap. Always current. Easy to update.\",\n}\n\nfor name, desc in approaches.items():\n    print(f\"{name}: {desc}\")"
+      },
+      {
+        "heading": "When RAG shines",
+        "body": "RAG is best when your answers depend on specific documents that change over time. Internal wikis, product documentation, legal contracts, customer support FAQs, medical records. Anywhere you would tell a new employee 'look it up in the handbook' instead of 'memorise the handbook' — that is a RAG use case. RAG does not help with reasoning tasks ('solve this puzzle') or with general knowledge ('what is the capital of France'). It helps when the answer exists in a specific document and needs to be looked up.",
+        "code": "# Good and bad RAG use cases\ngood = [\n    \"Q: What is our refund policy?\",\n    \"Q: How do I configure SSO?\",\n    \"Q: What did the contract say about renewal?\",\n]\n\nbad = [\n    \"Q: What is 17 * 23?\",\n    \"Q: Why is the sky blue?\",\n    \"Q: Write me a poem about autumn.\",\n]\n\nprint(\"Good RAG questions: answer in your documents\")\nfor q in good:\n    print(f\"  {q}\")\n\nprint(\"Bad RAG questions: no specific source\")\nfor q in bad:\n    print(f\"  {q}\")"
+      }
+    ],
+    "formal_definition": "Retrieval-Augmented Generation (RAG) is a system architecture that combines a retrieval component (typically embedding-based vector search over an indexed corpus) with a generation component (typically a large language model). The retrieval step selects the top-k documents most relevant to the query; the generation step conditions the LLM on both the query and the retrieved context. RAG reduces hallucination, avoids retraining, and enables the model to answer questions about content not in its training data.",
+    "code_example": {
+      "language": "python",
+      "code": "# Complete RAG pipeline (conceptual)\nimport math\n\ndef embed(text):\n    vec = [0.0, 0.0, 0.0, 0.0]\n    for i, ch in enumerate(text.lower()[:100]):\n        vec[i % 4] += ord(ch) % 10\n    total = sum(vec) or 1\n    return [v / total for v in vec]\n\ndef cosine(a, b):\n    dot = sum(x * y for x, y in zip(a, b))\n    ma = math.sqrt(sum(x * x for x in a))\n    mb = math.sqrt(sum(x * x for x in b))\n    return dot / (ma * mb) if ma and mb else 0\n\nknowledge_base = [\n    \"Acme Corp's return policy: 30 days for full refund.\",\n    \"Acme Corp's shipping: free for orders above $50.\",\n    \"Contact Acme support at support@acme.com.\",\n]\n\nindexed = [(doc, embed(doc)) for doc in knowledge_base]\n\ndef rag(question):\n    q_emb = embed(question)\n    scored = [(doc, cosine(q_emb, d_emb)) for doc, d_emb in indexed]\n    scored.sort(key=lambda x: -x[1])\n    context = \"\\n\".join(doc for doc, _ in scored[:2])\n    return f\"Answer grounded in: {context[:80]}...\"\n\nprint(rag(\"How do I get my money back?\"))",
+      "universal_explanation": "The pipeline embeds all documents once, then for a query it embeds the query and finds the most similar documents. The top documents become the context for the LLM. This is the entire RAG pattern — everything else is optimisation."
+    },
+    "common_mistakes": [
+      "Using RAG for reasoning tasks: RAG helps when the answer exists in a document. It does not help with puzzles or math.",
+      "Forgetting to instruct the model to use the context: without a clear prompt, the model may ignore the retrieved documents.",
+      "Not testing retrieval quality: if retrieval fails to find the right document, the model cannot answer correctly. Measure retrieval separately.",
+      "Ignoring the cost of stale documents: if the knowledge base is not up to date, RAG will return outdated answers — but the model will present them with confidence."
+    ],
+    "real_world_usage": "Every enterprise AI assistant uses RAG: Glean (enterprise search), Notion AI (workspace assistant), Harvey (legal research), Perplexity (web search + generation), GitHub Copilot Chat (codebase assistant). ChatGPT's browsing mode is RAG over live web pages. Claude's 'projects' feature and OpenAI's 'knowledge files' are both RAG implementations. RAG is the single most common pattern in production AI today.",
+    "key_takeaways": [
+      "RAG combines retrieval (with embeddings) and generation (with an LLM).",
+      "It lets the model answer questions about documents it was never trained on.",
+      "The retrieved documents are the source of truth; the model answers from them.",
+      "RAG is cheaper and easier to keep up to date than fine-tuning.",
+      "RAG is the most common pattern in modern AI assistants."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "RAG has three parts: a knowledge base, a retriever, and a ___.",
+      "options": ["generator", "database", "compiler"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why is RAG usually preferred over fine-tuning for company documents?",
+      "choices": [
+        "RAG produces more creative answers",
+        "RAG is cheaper, always current, and quotes documents directly",
+        "RAG is faster to train"
+      ],
+      "correct_index": 1,
+      "reveal": "RAG does not retrain the model — it looks up documents at query time. This makes updates cheap and ensures answers come directly from the source."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Which question is BEST suited for a RAG system?",
+      "choices": [
+        "Write a poem about the sea",
+        "What is our company's policy on remote work?",
+        "What is 34 * 17?"
+      ],
+      "correct_index": 1,
+      "reveal": "Company policy is a document-based question — perfect for RAG. Poems are creative, and math does not require documents."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# RAG pipeline\ndef rag(question, docs, llm):\n    context = \"\\n\".join(docs)\n    prompt = f\"Context: {context}\\n\\nAnswer:\"\n    return llm.generate(prompt)\n\n# Note: the question is never added to the prompt",
+      "wrong_line": 3,
+      "explanation": "The prompt is missing the question. Without it, the LLM has no idea what to answer — it only sees the context. The prompt must include both the question and the context, in a clear structure."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what RAG is and give one example of a good use case.",
+      "rubric": "Should mention that RAG retrieves documents and gives them to an LLM as context for answering. Good use case: internal knowledge base, customer support, legal documents, etc.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "In RAG, the retrieved documents become the ___ for the LLM's answer.",
+      "options": ["context", "gradient", "embedding"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "A RAG system gives confidently wrong answers about recent events. What is the most likely cause?",
+      "choices": [
+        "The LLM is broken",
+        "The knowledge base is outdated or does not include recent events",
+        "RAG does not support recency"
+      ],
+      "correct_index": 1,
+      "reveal": "RAG can only be as good as the knowledge base. If the documents are outdated or missing recent content, the model will not have the information — and may still answer confidently."
+    },
+    {
+      "type": "predict",
+      "question": "Which is NOT a good use case for RAG?",
+      "choices": [
+        "Answering questions about a company's HR policy",
+        "Solving a logic puzzle",
+        "Finding relevant passages from a legal contract"
+      ],
+      "correct_index": 1,
+      "reveal": "Logic puzzles require reasoning, not document retrieval. RAG is for finding answers that exist in documents."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Chunk and embed all documents in the knowledge base",
+        "Store document embeddings in a vector database",
+        "When a query arrives, embed it with the same model",
+        "Retrieve the top-K most similar documents",
+        "Build a prompt with query + retrieved context and call the LLM"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why RAG is generally preferred over fine-tuning for factual questions about specific documents.",
+      "rubric": "Should mention that RAG quotes documents directly (avoiding memory drift), updates cheaply when documents change, and grounds answers in a source rather than relying on the model's parametric memory.",
+      "min_words": 25
+    }
+  ]
+}

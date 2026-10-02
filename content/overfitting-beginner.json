@@ -1,0 +1,145 @@
+{
+  "concept_slug": "overfitting",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Overfitting: When Memorising Fails You",
+    "summary": "A model that memorises the training data is not learning. Overfitting is the gap between doing well on what you've seen and doing well on what you haven't.",
+    "learning_goals": [
+      "Understand what overfitting is",
+      "See the difference between memorising and learning",
+      "Understand why train and test performance diverge",
+      "Recognise the signs of overfitting"
+    ],
+    "long_intro": "Imagine a student who memorises every answer in a textbook but cannot solve a new problem. That is overfitting in a sentence. An overfitted AI model performs beautifully on the data it was trained on and poorly on anything new. The whole point of AI is generalisation — doing well on data you have never seen. This lesson explains why overfitting happens, how to spot it, and why it is one of the most important concepts in all of machine learning.",
+    "deep_explanation": [
+      {
+        "heading": "What overfitting is",
+        "body": "Overfitting happens when a model learns the training examples too well — including their noise and quirks — instead of the underlying pattern. On the training set, it looks like a star. On new data, it flops. The model has not learned the rules of the game; it has learned the exact positions of the pieces in the games it has seen. Overfitting is the enemy of every AI practitioner because it produces models that look great in demos and fail in production.",
+        "code": "# Training accuracy vs test accuracy over training\nepochs =      [1,   2,   3,   4,   5,   6,   7,   8,   9]\ntrain_acc =  [0.6, 0.72, 0.83, 0.90, 0.94, 0.97, 0.99, 1.00, 1.00]\ntest_acc  =  [0.58, 0.70, 0.80, 0.84, 0.85, 0.84, 0.82, 0.79, 0.76]\n\nfor e in range(len(epochs)):\n    print(f\"epoch {epochs[e]}: train={train_acc[e]:.2f}  test={test_acc[e]:.2f}\")\n\n# Best test performance is around epoch 5 — after that, overfitting begins"
+      },
+      {
+        "heading": "Why it happens",
+        "body": "A model with many parameters has the capacity to fit almost any pattern — including random noise. If you give it enough time on a small dataset, it will start fitting the noise. The noise is not part of the true pattern; it is random. Fitting it makes training performance rise but does nothing for new data. This is why overfitting gets worse as the model gets bigger and the dataset gets smaller: more capacity to memorise, less signal to distinguish from noise.",
+        "code": "# More parameters = more capacity to overfit\nmodels = {\n    \"tiny\":  (100, \"high underfit risk\"),\n    \"small\": (10000, \"balanced\"),\n    \"huge\":  (10000000, \"high overfit risk\"),\n}\n\nfor name, (params, note) in models.items():\n    print(f\"{name}: {params:,} params — {note}\")"
+      },
+      {
+        "heading": "How to spot overfitting",
+        "body": "The clearest sign of overfitting is a growing gap between training performance and test performance. If training accuracy reaches 99% while test accuracy is stuck at 75%, the model has memorised. During training, watch both curves. The best model is not the one with the highest training accuracy — it is the one with the best test accuracy, which often happens before training has fully converged on the training set.",
+        "code": "# The overfitting signature\ndef diagnose(train_acc, test_acc):\n    gap = train_acc - test_acc\n    if gap > 0.15:\n        return \"Overfitting — large train/test gap\"\n    elif train_acc < 0.65:\n        return \"Underfitting — model too simple\"\n    else:\n        return \"Healthy — train and test close\"\n\nprint(diagnose(0.99, 0.75))   # Overfitting\nprint(diagnose(0.55, 0.53))   # Underfitting\nprint(diagnose(0.85, 0.83))   # Healthy"
+      }
+    ],
+    "formal_definition": "Overfitting occurs when a model fits the training data more closely than the underlying data distribution, resulting in low training error but high test error. It is driven by excessive model capacity relative to the amount of training data, combined with insufficient regularisation. The standard diagnostics are the train-test gap and the shape of the validation loss curve.",
+    "code_example": {
+      "language": "python",
+      "code": "def best_epoch(train_losses, test_losses):\n    best = 0\n    for i in range(1, len(test_losses)):\n        if test_losses[i] < test_losses[best]:\n            best = i\n    return best\n\ntrain = [0.9, 0.7, 0.5, 0.3, 0.2, 0.1, 0.05]\ntest  = [0.95, 0.72, 0.55, 0.45, 0.48, 0.55, 0.68]\n\nbest = best_epoch(train, test)\nprint(f\"Best test loss at epoch {best}\")\nprint(f\"Training loss at that epoch: {train[best]}\")\nprint(f\"Test loss at that epoch: {test[best]}\")",
+      "universal_explanation": "The function finds the epoch where test loss is lowest — that is the point where the model is most generalisable. Training past this point increases training performance but decreases test performance. Best practice is to stop training here, not at the end."
+    },
+    "common_mistakes": [
+      "Reporting training accuracy as a measure of model quality: it tells you nothing about how the model will do on new data.",
+      "Training longer to improve training accuracy: past a certain point, it only makes overfitting worse.",
+      "Using a small dataset: fewer examples means the model can memorise more easily. More data is one of the best defences.",
+      "Ignoring the test set: without a held-out set, you cannot detect overfitting at all."
+    ],
+    "real_world_usage": "Overfitting is the reason every serious AI workflow holds back a test set. It is why researchers use regularisation techniques (dropout, weight decay) and data augmentation. It is why Kaggle competitions are won by practitioners who carefully manage the train/test gap. In production, an overfitted model that looked great in a notebook can cause a company real damage — bad medical predictions, mispriced loans, offensive chatbot outputs.",
+    "key_takeaways": [
+      "Overfitting means doing well on training data but poorly on new data.",
+      "It happens when a model learns the noise, not the pattern.",
+      "Bigger models and smaller datasets make overfitting worse.",
+      "The train/test gap is the signature of overfitting.",
+      "The best model is not the one with the highest training score."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Overfitting means doing well on ___ data but poorly on new data.",
+      "options": ["training", "test", "random"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A model has 10 million parameters but is trained on 100 examples. What is the likely outcome?",
+      "choices": [
+        "Excellent generalisation",
+        "Severe overfitting",
+        "Underfitting"
+      ],
+      "correct_index": 1,
+      "reveal": "Way more capacity than data. The model will memorise the 100 examples and fail on anything new."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Train accuracy = 99%, test accuracy = 72%. Is the model underfitting, overfitting, or healthy?",
+      "choices": ["Underfitting", "Overfitting", "Healthy"],
+      "correct_index": 1,
+      "reveal": "The gap (99% - 72% = 27%) is large, which means the model has memorised training data without learning the general pattern."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "train_acc = 0.55\ntest_acc  = 0.54\n\nif train_acc - test_acc > 0.15:\n    print(\"Model is overfitting\")\nelse:\n    print(\"Model is overfitting too\")",
+      "wrong_line": 7,
+      "explanation": "The else branch prints 'Model is overfitting too' — but this is the case where the model is NOT overfitting. It should print 'Model is healthy' or similar. The current logic mislabels healthy models."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why a model with very high training accuracy might still be a bad model.",
+      "rubric": "Should mention that high training accuracy may mean memorisation, not learning. What matters is performance on unseen data.",
+      "min_words": 20
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Overfitting is diagnosed by a large gap between training and ___ performance.",
+      "options": ["test", "validation", "random"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which change is most likely to reduce overfitting?",
+      "choices": [
+        "Adding more parameters",
+        "Training longer",
+        "Collecting more training data"
+      ],
+      "correct_index": 2,
+      "reveal": "More data gives the model more signal to learn from, reducing the chance it memorises noise."
+    },
+    {
+      "type": "predict",
+      "question": "A model's test loss decreases until epoch 5 then rises steadily. What should you do?",
+      "choices": [
+        "Train for 20 more epochs",
+        "Stop training around epoch 5",
+        "Restart training from scratch"
+      ],
+      "correct_index": 1,
+      "reveal": "The best test performance is at epoch 5. Continuing to train past this point makes overfitting worse. This is called early stopping."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Split data into train and test sets",
+        "Train the model on the training set",
+        "Evaluate on the test set after each epoch",
+        "Stop training when test performance stops improving"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain the difference between memorising and learning.",
+      "rubric": "Should say memorising means fitting the specific examples (including their noise), while learning means finding the underlying pattern that generalises to new examples.",
+      "min_words": 15
+    }
+  ]
+}

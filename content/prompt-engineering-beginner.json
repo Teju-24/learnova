@@ -1,0 +1,140 @@
+{
+  "concept_slug": "prompt-engineering",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Prompt Engineering: Getting the Best Out of AI",
+    "summary": "The way you ask a question determines how well an AI answers. Prompt engineering is the craft of writing instructions that reliably produce useful output.",
+    "learning_goals": [
+      "Understand why prompt wording matters",
+      "Learn the four basic ingredients of a good prompt",
+      "Recognise common prompt anti-patterns",
+      "Read example prompts and improve them"
+    ],
+    "long_intro": "Language models do not read your mind. They respond to what you actually wrote. A vague question gets a vague answer; a clear, specific instruction gets a useful one. This is not a quirk — it is how the models work. Prompt engineering is the practical skill of writing instructions that reliably produce the output you want. In this lesson you will learn the four things every good prompt contains, common mistakes to avoid, and how to structure prompts for tasks like summarising, classifying, and generating.",
+    "deep_explanation": [
+      {
+        "heading": "The four ingredients of a good prompt",
+        "body": "Most effective prompts have four parts. (1) Role: tell the model who it is ('You are a biology teacher'). (2) Task: describe what you want ('Explain photosynthesis in 3 sentences'). (3) Context: give relevant background ('The audience is a 10-year-old'). (4) Format: specify the output shape ('Use bullet points'). Not every prompt needs all four, but when a prompt is not working, one of these is usually missing.",
+        "code": "# Weak prompt\nbad = \"Tell me about photosynthesis\"\n\n# Stronger prompt\nbetter = \"\"\"You are a biology teacher explaining to a 10-year-old.\n\nExplain photosynthesis in exactly 3 sentences. Use simple words.\nEnd with one fun fact.\"\"\"\n\nprint(\"Weak prompt:\", bad)\nprint()\nprint(\"Stronger prompt:\")\nprint(better)"
+      },
+      {
+        "heading": "Be specific about format",
+        "body": "Models follow format instructions very well. If you want bullet points, say so. If you want JSON, say so and give an example. If you want exactly 5 words, say that. Vague format requests produce inconsistent results. Specific ones produce exactly what you can parse and use. This is especially important when the output feeds into another system (a database, a script, an API).",
+        "code": "# Specify format explicitly\nexample = \"\"\"Classify the following review as POSITIVE or NEGATIVE.\n\nReturn JSON exactly in this shape:\n{ \"sentiment\": \"POSITIVE\" | \"NEGATIVE\", \"confidence\": 0.0-1.0 }\n\nReview: \"The food was amazing and the staff were so kind.\"\"\"\n\nprint(example)"
+      },
+      {
+        "heading": "Show, don't just tell",
+        "body": "If your task has a specific style or pattern, give one or two examples in the prompt. This is called few-shot prompting. The model will follow the example's pattern. For example, if you want a specific tone, provide two short examples of that tone. If you want a specific output structure, show it once. Few-shot prompting often dramatically improves quality compared to zero-shot (no examples).",
+        "code": "# Few-shot prompting\nprompt = \"\"\"Translate English to informal French.\n\nExamples:\n  Hello, how are you? → Salut, ça va ?\n  See you later.      → À plus.\n  I am tired.         → Je suis crevé.\n\nNow translate:\n  Where are you?\"\"\"\n\nprint(prompt)"
+      },
+      {
+        "heading": "Common anti-patterns",
+        "body": "Avoid these. (1) Vague requests: 'make this better' without saying what 'better' means. (2) Contradictory instructions: 'be concise but cover everything in detail'. (3) Asking for multiple things at once: split into separate prompts if possible. (4) Assuming context: the model does not know what 'this' refers to unless you paste it. (5) Ignoring token limits: very long prompts may be truncated. (6) Expecting perfect reasoning: models sometimes get math or logic wrong even with good prompts.",
+        "code": "# Anti-patterns to fix\nbad_prompts = [\n    \"Make this better.\",                                  # vague\n    \"Be brief but comprehensive.\",                         # contradictory\n    \"Summarise this, translate it, and classify it.\",      # too much at once\n    \"Fix the bug in my code.\",                            # no code provided\n]\n\nfor p in bad_prompts:\n    print(f\"Bad: {p}\")"
+      }
+    ],
+    "formal_definition": "Prompt engineering is the practice of designing input text to a language model so that the model's output matches a desired specification. Effective prompts specify role, task, context, and format; may include examples (few-shot); and avoid ambiguity. Modern variations include chain-of-thought prompting (asking for reasoning steps), self-consistency (sampling multiple answers), and retrieval-augmented prompting (injecting relevant context).",
+    "code_example": {
+      "language": "python",
+      "code": "# A template-based prompt builder\n\ndef build_summary_prompt(article, audience=\"general\", max_words=50):\n    return f\"\"\"You are a professional summariser.\n\nSummarise the article below in at most {max_words} words.\nAudience: {audience}.\nOutput: a single paragraph, no headings.\n\nArticle:\n{article}\n\nSummary:\"\"\"\n\narticle = \"AI systems are transforming industries by automating tasks...\"\nprompt = build_summary_prompt(article, audience=\"executives\", max_words=40)\nprint(prompt)",
+      "universal_explanation": "The template bakes in role ('professional summariser'), task ('summarise in at most N words'), context ('audience: executives'), and format ('single paragraph, no headings'). Templates like this are how production systems build consistent prompts at scale."
+    },
+    "common_mistakes": [
+      "Assuming the model knows context it does not have: paste the relevant content explicitly.",
+      "Asking one prompt to do too many things: split into separate prompts, chain them.",
+      "Skipping examples when the pattern matters: even one example can improve output quality dramatically.",
+      "Writing prompts as if speaking to a human: be explicit, direct, and structured — the model is not inferring tone from a conversation."
+    ],
+    "real_world_usage": "Prompt engineering is a real job in AI companies. It is used in customer support bots, code assistants, content moderation, search re-ranking, and every AI product built on top of an LLM. OpenAI, Anthropic, and Google all have prompt engineering guides. Tools like LangChain and DSPy treat prompts as programmatic objects, with templating and version control. In most enterprise deployments, prompt quality is the single largest lever for output quality.",
+    "key_takeaways": [
+      "Good prompts specify role, task, context, and format.",
+      "Examples in the prompt (few-shot) improve output quality.",
+      "Be specific about format if the output feeds into other systems.",
+      "Avoid vague, contradictory, or overloaded instructions.",
+      "Prompt engineering is a real skill used across the AI industry."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "A good prompt usually specifies role, task, context, and ___.",
+      "options": ["format", "mood", "colour"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You want a model to output JSON. Which prompt is most likely to work?",
+      "choices": [
+        "\"Give me the result in a structured way.\"",
+        "\"Return JSON exactly with keys 'name' and 'age'.\"",
+        "\"Use whatever format works.\""
+      ],
+      "correct_index": 1,
+      "reveal": "Specific format instructions — naming the exact keys and the output type — produce reliable results. Vague requests produce inconsistent output."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "prompt = \"\"\"Be brief but explain everything in detail.\nUse simple words and technical jargon.\nGive one example and no examples.\"\"\"\n\nprint(prompt)",
+      "wrong_line": 2,
+      "explanation": "The prompt contains contradictory instructions: 'brief but in detail', 'simple words and technical jargon', 'one example and no examples'. Contradictions confuse the model and produce unpredictable output. Each instruction should be internally consistent."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why prompt wording matters for AI output quality.",
+      "rubric": "Should mention that the model responds to what is written, so specific and well-structured prompts reliably produce better output than vague ones.",
+      "min_words": 20
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Providing examples in a prompt is called ___ -shot prompting.",
+      "options": ["few", "one", "many"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which prompt is most likely to produce useful output?",
+      "choices": [
+        "\"Make this better.\"",
+        "\"Rewrite this paragraph in 3 sentences, aimed at a 10-year-old.\"",
+        "\"Do something with this text.\""
+      ],
+      "correct_index": 1,
+      "reveal": "The second prompt specifies task (rewrite), length (3 sentences), and audience (10-year-old). The others are too vague."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "prompt = f\"\"\"Summarise this article.\nBe brief but cover every section.\nUse simple language and technical terms.\n\"\"\"\nprint(prompt)",
+      "wrong_line": 2,
+      "explanation": "The instruction is contradictory: 'brief but cover every section' asks for two incompatible things. Contradictions confuse the model. Choose one: brief (skip details) OR comprehensive (cover everything)."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Decide what role the model should take",
+        "Describe the exact task",
+        "Provide relevant context",
+        "Specify the output format",
+        "Optionally include one or two examples"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why contradictory instructions in a prompt produce poor output.",
+      "rubric": "Should mention that the model tries to satisfy all instructions but they conflict, so it cannot simultaneously meet both. The result is unpredictable or mediocre on both fronts.",
+      "min_words": 20
+    }
+  ]
+}

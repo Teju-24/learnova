@@ -1,0 +1,158 @@
+{
+  "concept_slug": "backprop",
+  "tier": "advanced",
+  "concept_note": {
+    "title": "Backpropagation: The Chain Rule at Scale",
+    "summary": "How the chain rule applied to millions of operations becomes one efficient algorithm. Automatic differentiation in forward and reverse mode, vanishing gradients, and why residual connections made deep networks trainable.",
+    "learning_goals": [
+      "Apply the chain rule across a deep computation graph",
+      "Distinguish forward-mode from reverse-mode autodiff",
+      "Diagnose vanishing and exploding gradients",
+      "Explain why residual connections made deep networks trainable"
+    ],
+    "long_intro": "You know that backpropagation is the chain rule. This lesson is about what that means at scale. A modern network is a graph of hundreds of millions of operations, and the gradient of the loss with respect to every parameter has to flow through all of them. Backprop does this in roughly the cost of a single forward pass, which is the reason training a large model is expensive but not impossibly slow. The same machinery has two forms — forward mode and reverse mode — and choosing between them is a question of shape. And backprop also explains one of the great failures of deep learning: when gradients vanish through many layers, early layers stop learning. Residual connections were invented to give those gradients a path, and they are why 152-layer networks are trainable today.",
+    "deep_explanation": [
+      {
+        "heading": "The chain rule at scale",
+        "body": "A network is a composition f = f_L ∘ ... ∘ f_1, so the derivative of the loss with respect to the first layer's parameters is a product of local Jacobians. Written out naively that product has one term per path through the graph, which is exponential in the depth. Backprop is the trick for evaluating it without enumerating paths: run the forward pass once, caching each intermediate, then walk the graph backwards applying one local derivative at a time. The cost of differentiating a layer is proportional to the cost of computing it, and every edge is visited exactly once, so the total backward pass costs a small constant multiple of the forward pass — typically two to three times. That is the entire reason backprop is practical.",
+        "code": "# The chain rule over a two-step composition\ndef f(x):\n    return (x ** 2 + 1) * 3\n\ndef f_prime(x):\n    return 3 * 2 * x\n\nfor x in [1.0, 2.0, 3.0]:\n    h = 1e-6\n    numeric = (f(x + h) - f(x - h)) / (2 * h)\n    print(x, f_prime(x), round(numeric, 6))\n\n# The two agree, so the chain rule was applied correctly"
+      },
+      {
+        "heading": "Autodiff: forward mode and reverse mode",
+        "body": "Automatic differentiation is backprop packaged as a library. Both modes apply the chain rule; they differ in what they hold. Forward mode pushes a tangent vector alongside each activation, so it computes a Jacobian-vector product and costs one pass per output dimension. Reverse mode holds an adjoint — a gradient with respect to each intermediate — and starts from the output with a seed of 1.0, so one pass gives the gradient with respect to every input at once. Neural networks have millions of parameters but a single scalar loss, which is exactly the case reverse mode is built for. Forward mode wins when the output is low-dimensional and the input is not, which is how it is used in sensitivity analysis and adjoint-based optimisation.",
+        "code": "# Reverse mode by hand on a tiny graph\n# a -> b = a*2 -> c = b+1 -> d = c^2\na = 3.0\nb = a * 2      # local derivative db/da = 2\nc = b + 1      # local derivative dc/db = 1\nd = c ** 2     # local derivative dd/dc = 2c\n\n# Seed the output, then walk backwards multiplying local derivatives\ngrad_d = 1.0\ngrad_c = grad_d * 2 * c\ngrad_b = grad_c * 1\ngrad_a = grad_b * 2\n\nprint('d =', d)        # 49.0\nprint('da/dc =', grad_a)  # 28.0, same as differentiating by hand"
+      },
+      {
+        "heading": "Vanishing and exploding gradients",
+        "body": "The backward pass multiplies one local derivative after another. If those factors are consistently below 1 the product shrinks geometrically and the early layers receive a gradient close to zero — they stop updating, which is vanishing gradients. The sigmoid derivative peaks at 0.25, so ten sigmoid layers shrink the gradient by at least a factor of about one million. Symmetrically, factors above 1 make the gradient explode and the loss diverge. The fixes all attack the same problem: ReLU has a derivative of 0 or 1 and never saturates, careful initialisation keeps early-layer variances stable, normalisation layers bound the intermediate activations, and gradient clipping truncates a runaway backward pass without discarding its direction.",
+        "code": "# Why depth hurts: multiplying many small derivatives\ngrad = 1.0\nfor _ in range(10):\n    grad *= 0.25   # the largest possible sigmoid derivative\n\nprint(f'after 10 sigmoid layers: {grad:.2e}')\n# ~9.5e-07: the first layers would receive a gradient of almost zero"
+      },
+      {
+        "heading": "Residual connections and gradient highways",
+        "body": "A residual block computes y = F(x) + x instead of y = F(x). The addition creates an identity path straight from the output back to the input, and differentiating it gives a gradient of exactly one along that path, whatever F does. So even if F is nearly useless and its gradient is tiny, the block as a whole still delivers a usable gradient to the layers below. This single change let ResNet train networks more than a hundred layers deep when the previous state of the art stalled around twenty. Residuals also help optimisation directly: a stack of blocks can learn to be the identity, so adding depth never has to make the network worse.",
+        "code": "# Gradient reaching x through a residual block y = F(x) + x\ngrad_out = 1.0\ngrad_via_F = 0.1   # however F responds\n\nprint('with residual:   ', grad_out * (grad_via_F + 1))\nprint('without residual:', grad_out * grad_via_F)\n\n# The +1 term is the identity path; it is never small"
+      }
+    ],
+    "formal_definition": "For a computation graph G with inputs x, activations a_1..a_L and scalar loss L, backprop computes ∂L/∂x by reverse-mode automatic differentiation. The forward pass caches a_l = f_l(a_{l-1}) for each node. The backward pass seeds ∂L/∂L = 1 and, visiting nodes in reverse topological order, applies each node's local Jacobian-transpose: for y = g(x), ∂L/∂x += (∂g/∂x)ᵀ ∂L/∂y. Total cost is O(sum of layer costs), a small multiple of one forward pass. Reverse mode returns the gradient of one scalar output with respect to all inputs in a single pass; forward mode returns one Jacobian-vector product per output dimension.",
+    "code_example": {
+      "language": "python",
+      "code": "class Value:\n    \"\"\"A scalar that remembers how it was produced, so gradients can flow back.\"\"\"\n\n    def __init__(self, data, _children=(), _op='', grad=0.0):\n        self.data = data\n        self.grad = grad\n        self._backward = lambda: None\n        self._prev = set(_children)\n        self._op = _op\n\n    def __repr__(self):\n        return f'Value(data={self.data:.4f}, grad={self.grad:.4f})'\n\n    def __add__(self, other):\n        other = other if isinstance(other, Value) else Value(other)\n        out = Value(self.data + other.data, (self, other), '+')\n\n        def _backward():\n            self.grad += out.grad\n            other.grad += out.grad\n\n        out._backward = _backward\n        return out\n\n    def __mul__(self, other):\n        other = other if isinstance(other, Value) else Value(other)\n        out = Value(self.data * other.data, (self, other), '*')\n\n        def _backward():\n            self.grad += other.data * out.grad\n            other.grad += self.data * out.grad\n\n        out._backward = _backward\n        return out\n\n    def relu(self):\n        out = Value(self.data if self.data > 0 else 0.0, (self,), 'relu')\n\n        def _backward():\n            self.grad += out.grad if self.data > 0 else 0.0\n\n        out._backward = _backward\n        return out\n\n    def backward(self):\n        topo, seen = [], set()\n\n        def build(v):\n            if v in seen:\n                return\n            seen.add(v)\n            for child in v._prev:\n                build(child)\n            topo.append(v)\n\n        build(self)\n        self.grad = 1.0\n        for node in reversed(topo):\n            node._backward()\n        return self\n\n\n# y = relu((2a + 3) * a) at a = 4\na = Value(4.0)\ny = ((a * 2 + 3) * a).relu()\ny.backward()\n\nprint('y =', y.data)        # 44.0\nprint('dy/da =', a.grad)    # 19.0",
+      "universal_explanation": "Each operation records a closure describing how to push a gradient back to its inputs. The forward pass only builds this graph; nothing is differentiated yet. The backward pass orders the graph so every node is visited after its children, seeds the output with 1.0, and fires each closure. Adding and multiplying distribute the incoming gradient unchanged; multiplication additionally scales each side by the other operand's value, which is the product rule."
+    },
+    "common_mistakes": [
+      "Forgetting to zero gradients before each backward pass: grads left over from the previous step accumulate into the update and corrupt training.",
+      "Calling backward twice on the same graph without retaining it: the intermediate buffers are freed after the first call and the second raises or silently returns zeros.",
+      "Believing backprop approximates the gradient: it computes it exactly by applying the chain rule, unlike finite differences which are only accurate to a tolerance.",
+      "Confusing the two directions: activations flow forward and gradients flow backward, and each node only ever knows its own local derivative."
+    ],
+    "real_world_usage": "Backprop is the engine behind every neural network trained today. PyTorch and TensorFlow both implement reverse-mode autodiff, which is why you call loss.backward() instead of differentiating by hand. It is also why GPUs help: the gradient computation is a long chain of dense matrix operations that parallelise cleanly. JAX goes further and compiles the entire forward and backward pass into a fused kernel graph, applying the chain rule with no Python overhead at all.",
+    "key_takeaways": [
+      "Backprop is the chain rule applied one local derivative at a time.",
+      "It costs only a small multiple of a single forward pass.",
+      "Reverse mode is efficient because the loss is a single scalar.",
+      "Vanishing gradients come from multiplying many small derivatives.",
+      "Residual connections give gradients a direct identity path backward."
+    ],
+    "estimated_minutes": 15
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "In a computation graph, the backward pass propagates ___ from the output toward the inputs.",
+      "options": ["gradients", "activations", "loss values"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why is reverse-mode autodiff so well suited to training neural networks?",
+      "choices": [
+        "It approximates gradients with finite differences, which is cheap",
+        "One pass from the scalar loss gives the gradient with respect to every parameter at once",
+        "It only works when the input is a single scalar"
+      ],
+      "correct_index": 1,
+      "reveal": "A network has millions of parameters but one scalar loss. Reverse mode seeds the output with 1.0 and propagates adjoints backwards, so a single pass yields the full gradient. Forward mode, by contrast, would need one pass per output dimension."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why do gradients vanish in a deep stack of sigmoid layers?",
+      "choices": [
+        "Sigmoid weights are initialised too small",
+        "The backward pass multiplies many derivatives below 1, shrinking the product geometrically",
+        "Sigmoid activation has no derivative at zero"
+      ],
+      "correct_index": 1,
+      "reveal": "The sigmoid derivative peaks at 0.25, so ten layers shrink the gradient by at least (0.25)^10, about one millionth. Early layers then receive a gradient so small that learning effectively stops."
+    }},
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Implement a tiny autograd engine. Write a Value class that stores data and grad, records its inputs and operation for each of __add__, __mul__ and relu, and gives each operation a _backward closure. Then implement backward(), which must order the graph with a topological sort, seed the output's grad to 1.0, and call each node's _backward in reverse order. Test it on y = relu((2a + 3) * a) with a = 4, which should give y = 44 and dy/da = 19.",
+      "starter_code": "class Value:\n    def __init__(self, data, _children=(), _op='', grad=0.0):\n        self.data = data\n        self.grad = grad\n        self._backward = lambda: None\n        self._prev = set(_children)\n        self._op = _op\n\n    # TODO: __add__ — out.grad passes straight to both inputs\n    # TODO: __mul__ — each input gets the other input's data times out.grad\n    #       (this is the product rule)\n    # TODO: relu — gradient passes through only if the input was positive\n\n    def backward(self):\n        # TODO: topologically sort the graph, seed self.grad = 1.0,\n        #       then call each node's _backward in reverse order\n        pass\n\n\na = Value(4.0)\ny = ((a * 2 + 3) * a).relu()\ny.backward()\nprint(y.data, a.grad)  # 44.0 19.0\n",
+      "reference_code": "class Value:\n    def __init__(self, data, _children=(), _op='', grad=0.0):\n        self.data = data\n        self.grad = grad\n        self._backward = lambda: None\n        self._prev = set(_children)\n        self._op = _op\n\n    def __add__(self, other):\n        other = other if isinstance(other, Value) else Value(other)\n        out = Value(self.data + other.data, (self, other), '+')\n\n        def _backward():\n            self.grad += out.grad\n            other.grad += out.grad\n\n        out._backward = _backward\n        return out\n\n    def __mul__(self, other):\n        other = other if isinstance(other, Value) else Value(other)\n        out = Value(self.data * other.data, (self, other), '*')\n\n        def _backward():\n            self.grad += other.data * out.grad\n            other.grad += self.data * out.grad\n\n        out._backward = _backward\n        return out\n\n    def relu(self):\n        out = Value(self.data if self.data > 0 else 0.0, (self,), 'relu')\n\n        def _backward():\n            self.grad += out.grad if self.data > 0 else 0.0\n\n        out._backward = _backward\n        return out\n\n    def backward(self):\n        topo, seen = [], set()\n\n        def build(v):\n            if v in seen:\n                return\n            seen.add(v)\n            for child in v._prev:\n                build(child)\n            topo.append(v)\n\n        build(self)\n        self.grad = 1.0\n        for node in reversed(topo):\n            node._backward()\n        return self\n\n\na = Value(4.0)\ny = ((a * 2 + 3) * a).relu()\ny.backward()\nprint(y.data)      # 44.0\nprint(a.grad)      # 19.0",
+      "rubric": "Needs a Value class that caches inputs and the operation, a _backward closure per operation, and a backward() that does a topological sort, seeds the output gradient to 1.0, and fires the closures in reverse order. The multiplication closure must apply the product rule (each input scaled by the other's data) and relu must zero the gradient for non-positive inputs. The test case must print y = 44.0 and dy/da = 19.0.",
+      "language": "python",
+      "min_lines": 20
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In a paragraph, explain how a residual connection gives gradients a path back to early layers that would otherwise vanish.",
+      "rubric": "Should mention: the block computes y = F(x) + x, creating an identity path; differentiating the sum gives a gradient of exactly 1 along that path regardless of F; so early layers keep receiving a usable gradient even when F's gradient is tiny; this is what made ResNet's very deep networks trainable. Intuition matters more than exact algebra.",
+      "min_words": 40
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The sigmoid derivative is at most ___, so stacking layers shrinks the gradient geometrically.",
+      "options": ["0.25", "1.0", "0.5"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Why does backprop cost only a small multiple of a forward pass?",
+      "choices": [
+        "It only differentiates the last layer and estimates the rest",
+        "Differentiating each layer costs about what computing it costs, and each edge is visited once",
+        "It reuses the forward pass's stored activations with no extra arithmetic"
+      ],
+      "correct_index": 1,
+      "reveal": "Each node's local Jacobian costs the same order as its forward computation, and the reverse pass touches every edge once. The total is a small constant multiple — typically two to three times — of one forward pass."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Run the forward pass, caching each intermediate activation",
+        "Seed the output node's gradient with 1.0",
+        "Visit the nodes in reverse topological order",
+        "Fire each node's local derivative to accumulate into its parents' gradients"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "predict",
+      "question": "A network is training but its loss barely moves and early-layer weights look frozen. What is the most likely cause?",
+      "choices": [
+        "Vanishing gradients reaching the early layers",
+        "The learning rate is too high",
+        "The model has too many parameters"
+      ],
+      "correct_index": 0,
+      "reveal": "If the gradient reaching the early layers is near zero, those layers take effectively no steps. Sigmoid stacks are the classic cause; ReLU, careful initialisation, normalisation and residual connections are the usual fixes."
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why reverse mode is preferred over forward mode for training neural networks.",
+      "rubric": "Should mention that a network has a single scalar loss but a very large number of parameters or inputs; reverse mode seeds the output and gets the gradient w.r.t. all inputs in one pass, while forward mode would need one pass per output dimension.",
+      "min_words": 25
+    }
+  ]
+}

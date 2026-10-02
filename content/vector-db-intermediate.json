@@ -1,0 +1,156 @@
+{
+  "concept_slug": "vector-db",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Vector Databases: Indexes, Hybrid Search, and Production Patterns",
+    "summary": "HNSW graphs, IVF clusters, hybrid search, and metadata filtering turn embeddings into production-grade retrieval systems.",
+    "learning_goals": [
+      "Understand HNSW and IVF index structures",
+      "Read hybrid search (vector + keyword) patterns",
+      "Understand metadata filtering and pre/post filtering trade-offs",
+      "Design a retrieval pipeline for RAG"
+    ],
+    "long_intro": "You know a vector database stores embeddings and answers nearest-neighbour queries. This lesson goes deep on the three techniques that make them production-grade. HNSW builds a navigable graph to find near-neighbours in sublinear time. IVF clusters vectors and searches only nearby clusters. Hybrid search combines vector similarity with traditional keyword search (BM25) for the best of both worlds. Metadata filtering lets you restrict search to a subset ('only documents from 2023'). Together these give the flexibility and speed that production search and RAG systems need.",
+    "deep_explanation": [
+      {
+        "heading": "HNSW: graph-based navigation",
+        "body": "HNSW (Hierarchical Navigable Small World) builds a multi-layer graph. The top layer has a few well-connected nodes; the bottom layer has all nodes, each connected to its nearest neighbours. Search starts at the top, greedily moves to the nearest node, drops down a layer, and repeats. At the bottom layer, it explores a small neighbourhood and returns the closest points found. The key insight: at each layer, we only visit a handful of nodes, so total comparisons are O(log n) instead of O(n). This is why HNSW is fast.",
+        "code": "# HNSW search (conceptual)\n# Layer 3 (sparse):     start here, move greedily to nearest\n# Layer 2:              drop down, move greedily again\n# Layer 1:              drop down, move to local region\n# Layer 0 (all nodes):  explore neighbourhood, return top-K\n\n# Result: ~O(log n) comparisons per query\n\nprint(\"HNSW: greedy descent through layers, then local search\")"
+      },
+      {
+        "heading": "IVF: inverted file index",
+        "body": "IVF (Inverted File) partitions the vector space into K clusters using k-means. Each cluster has a centroid. When a query arrives, the system finds the n_probe nearest centroids and searches only the vectors in those clusters. This reduces the search to a fraction of the total. The trade-off: if the nearest vector is in a cluster whose centroid is far from the query, it will be missed. Tuning n_probe adjusts the recall/speed trade-off.",
+        "code": "# IVF search (conceptual)\n#\n# Training: k-means on the corpus, get K centroids\n# Indexing: assign each vector to its nearest centroid\n# Query:\n#   1. Find the n_probe nearest centroids to the query\n#   2. Search only vectors in those clusters\n#   3. Return top-K\n\nK = 100          # number of clusters\nn_probe = 5      # search 5 nearest clusters per query\n\nprint(f\"IVF: {K} clusters, searching {n_probe} per query\")"
+      },
+      {
+        "heading": "Hybrid search: vector + keyword",
+        "body": "Vector search finds semantic matches but can miss exact terms. Keyword search (BM25) finds exact terms but misses paraphrases. Hybrid search combines both. Typically, you run both searches and merge the ranked results with a weighting scheme (Reciprocal Rank Fusion is common). Many production systems use hybrid search as their default, especially for technical or legal content where exact terms matter.",
+        "code": "# Hybrid search (conceptual)\ndef rrf(rank_lists, k=60):\n    \"\"\"Reciprocal Rank Fusion.\"\"\"\n    scores = {}\n    for ranks in rank_lists:\n        for rank, doc_id in enumerate(ranks):\n            scores[doc_id] = scores.get(doc_id, 0) + 1 / (k + rank + 1)\n    return sorted(scores.items(), key=lambda x: -x[1])\n\nvector_results = [\"doc_a\", \"doc_b\", \"doc_c\"]\nkeyword_results = [\"doc_b\", \"doc_d\", \"doc_a\"]\n\nfused = rrf([vector_results, keyword_results])\nprint(\"Hybrid results:\", fused)"
+      },
+      {
+        "heading": "Metadata filtering: pre and post",
+        "body": "Metadata filters restrict which vectors can match. Two approaches: pre-filtering (filter first, then search within the filtered set) and post-filtering (search first, filter after). Pre-filtering is more accurate but can be slow if the filter is selective. Post-filtering is fast but might return too few results after filtering. Production systems use hybrid strategies: if the filter is broad, pre-filter; if narrow, post-filter and re-query.",
+        "code": "# Metadata filter examples\ndocuments = [\n    {\"id\": \"doc1\", \"year\": 2023, \"category\": \"ml\",    \"vector\": [0.9, 0.1]},\n    {\"id\": \"doc2\", \"year\": 2022, \"category\": \"ml\",    \"vector\": [0.8, 0.2]},\n    {\"id\": \"doc3\", \"year\": 2023, \"category\": \"finance\", \"vector\": [0.1, 0.9]},\n]\n\n# Pre-filter: only 2023 documents\nfiltered = [d for d in documents if d[\"year\"] == 2023]\nprint(f\"Pre-filter kept {len(filtered)} of {len(documents)}\")\n\n# Now search within filtered set\nquery = [0.85, 0.15]\ndef cosine(a, b):\n    import math\n    d = sum(x * y for x, y in zip(a, b))\n    return d / (math.sqrt(sum(x * x for x in a)) * math.sqrt(sum(x * x for x in b)))\n\nresults = sorted(filtered, key=lambda d: -cosine(query, d[\"vector\"]))\nprint(\"Top result:\", results[0][\"id\"])"
+      }
+    ],
+    "formal_definition": "Vector indexes fall into two broad categories: graph-based (HNSW) and cluster-based (IVF). HNSW provides excellent recall and speed at the cost of memory; IVF is more memory-efficient and scales better to enormous corpora. Hybrid search combines dense vector similarity with sparse keyword relevance (BM25) via rank fusion. Metadata filtering supports pre-filter (index-time constraints) or post-filter (rerank after ANN search). Production systems tune index parameters (M, efConstruction, n_probe) to balance recall, latency, and memory.",
+    "code_example": {
+      "language": "python",
+      "code": "import math\nfrom collections import defaultdict\n\nclass HybridSearch:\n    def __init__(self):\n        self.docs = {}\n\n    def add(self, id, vector, text):\n        self.docs[id] = {\"vector\": vector, \"text\": text}\n\n    def cosine(self, a, b):\n        d = sum(x * y for x, y in zip(a, b))\n        ma = math.sqrt(sum(x * x for x in a))\n        mb = math.sqrt(sum(x * x for x in b))\n        return d / (ma * mb) if ma and mb else 0.0\n\n    def vector_search(self, query_vec, k=3):\n        scored = [(id, self.cosine(query_vec, d[\"vector\"])) for id, d in self.docs.items()]\n        return [id for id, _ in sorted(scored, key=lambda x: -x[1])[:k]]\n\n    def keyword_search(self, query_terms, k=3):\n        scored = []\n        for id, d in self.docs.items():\n            hits = sum(1 for t in query_terms if t.lower() in d[\"text\"].lower())\n            scored.append((id, hits))\n        return [id for id, _ in sorted(scored, key=lambda x: -x[1]) if _ > 0][:k]\n\n    def hybrid(self, query_vec, query_terms, k=3):\n        v = self.vector_search(query_vec, k * 2)\n        w = self.keyword_search(query_terms, k * 2)\n        # Reciprocal rank fusion\n        scores = defaultdict(float)\n        for ranks in [v, w]:\n            for rank, id in enumerate(ranks):\n                scores[id] += 1 / (60 + rank + 1)\n        return sorted(scores.items(), key=lambda x: -x[1])[:k]\n\nhs = HybridSearch()\nhs.add(\"doc1\", [0.9, 0.1], \"All about machine learning\")\nhs.add(\"doc2\", [0.85, 0.15], \"Deep learning transformers\")\nhs.add(\"doc3\", [0.1, 0.9], \"Financial reports 2023\")\nhs.add(\"doc4\", [0.7, 0.3], \"Neural networks overview\")\n\nresults = hs.hybrid([0.88, 0.12], [\"learning\", \"neural\"], k=2)\nprint(\"Hybrid results:\", results)",
+      "universal_explanation": "The hybrid search runs a vector search (semantic similarity) and a keyword search (exact term match) in parallel, then combines results with reciprocal rank fusion. Documents that rank high on both get boosted. This is the standard approach in production RAG systems."
+    },
+    "common_mistakes": [
+      "Using one index type for everything: HNSW is best for high-recall, low-latency at moderate scale; IVF is better for huge corpora on constrained memory.",
+      "Forgetting to re-embed when the query model changes: if you update your embedding model, all indexed vectors must be regenerated.",
+      "Skipping metadata filtering when it is needed: many enterprise searches must be scoped to a tenant, date range, or category.",
+      "Ignoring recall metrics: ANN is approximate. Measure recall@k on a validation set to know how often the true nearest neighbour is actually returned."
+    ],
+    "real_world_usage": "Pinecone, Weaviate, Qdrant, Milvus, and pgvector all implement HNSW and/or IVF. Production search systems at Google, Meta, and Spotify use hybrid search with metadata filtering. RAG pipelines for enterprise AI usually combine: (1) chunk the documents, (2) embed with a strong model, (3) index in a vector database, (4) at query time, run hybrid search, (5) rerank with a cross-encoder, (6) pass top-K to the LLM.",
+    "key_takeaways": [
+      "HNSW uses a multi-layer graph to find near-neighbours in sublinear time.",
+      "IVF clusters vectors and searches only nearby clusters.",
+      "Hybrid search combines vector similarity with BM25 keyword matching.",
+      "Metadata filtering restricts search and can be pre- or post-filter.",
+      "Production retrieval combines all these techniques in a pipeline."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "HNSW stands for Hierarchical Navigable Small ___.",
+      "options": ["World", "Warehouse", "Workspace"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "IVF searches only a subset of clusters per query. What is the trade-off?",
+      "choices": [
+        "It is always faster with no downside",
+        "It can miss vectors whose cluster centroid is far from the query",
+        "It uses more memory than HNSW"
+      ],
+      "correct_index": 1,
+      "reveal": "IVF only searches clusters whose centroids are close to the query. If the true nearest vector is in a cluster with a distant centroid, it will be missed. Tuning n_probe adjusts the speed/recall trade-off."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You are searching a legal database and need to find documents that mention an exact case name AND are semantically related to a query. Which approach?",
+      "choices": [
+        "Pure vector search",
+        "Pure keyword search",
+        "Hybrid search (vector + keyword)"
+      ],
+      "correct_index": 2,
+      "reveal": "Hybrid search combines semantic similarity (for the query) with keyword matching (for the exact case name). Pure vector search might miss the exact term; pure keyword search might miss paraphrases."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Metadata filter example\ndocs = [\n    {\"id\": \"d1\", \"year\": 2023, \"vector\": [0.9, 0.1]},\n    {\"id\": \"d2\", \"year\": 2024, \"vector\": [0.85, 0.15]},\n]\n\n# Want only 2023 documents, but filter was applied AFTER search\nquery = [0.88, 0.12]\nresults = sorted(docs, key=lambda d: -cosine(query, d[\"vector\"]))\nfiltered = [d for d in results if d[\"year\"] == 2023]\n# Too few results may remain after filtering",
+      "wrong_line": 9,
+      "explanation": "Post-filtering (search first, then filter) can leave too few results if the filter is selective. If only 5% of documents are from 2023, searching top-10 gives ~0.5 expected matches. Pre-filtering (filter first, then search) guarantees enough results, though it is more expensive on large indexes."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain the difference between HNSW and IVF indexes.",
+      "rubric": "Should mention HNSW is graph-based (multi-layer navigable graph), IVF is cluster-based (partitioned by k-means centroids). Both are approximate; HNSW is faster and more accurate at cost of memory, IVF is more memory-efficient.",
+      "min_words": 30
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "IVF uses k-means to partition vectors into clusters; search happens only in the nearest ___ clusters.",
+      "options": ["n_probe", "n_total", "n_random"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which combination is best for a search system where both exact terms and paraphrase matter?",
+      "choices": [
+        "Pure vector search",
+        "Pure BM25 keyword search",
+        "Hybrid search combining both via rank fusion"
+      ],
+      "correct_index": 2,
+      "reveal": "Hybrid search runs both and fuses the results, so it captures exact term matches and semantic similarity."
+    },
+    {
+      "type": "predict",
+      "question": "You have a filter that keeps only 1% of documents. Which filtering strategy is safest?",
+      "choices": [
+        "Post-filter (search first, then filter)",
+        "Pre-filter (filter first, then search within the filtered set)",
+        "No filtering"
+      ],
+      "correct_index": 1,
+      "reveal": "Post-filtering with a selective filter leaves too few results. Pre-filtering guarantees you search only within the matching subset, so you get enough results from the ANN index."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Embed all documents and store vectors plus metadata",
+        "Build an HNSW or IVF index over the vectors",
+        "At query time, embed the query and search the index for near-neighbours",
+        "Apply metadata filters (pre or post depending on selectivity)",
+        "Fuse with keyword search results if using hybrid retrieval"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain what reciprocal rank fusion does in hybrid search.",
+      "rubric": "Should mention that it combines ranked lists from multiple retrieval methods (vector and keyword) by summing 1/(k+rank) for each document, so documents ranked high on multiple lists get boosted.",
+      "min_words": 20
+    }
+  ]
+}

@@ -1,0 +1,146 @@
+{
+  "concept_slug": "linear-algebra",
+  "tier": "advanced",
+  "concept_note": {
+    "title": "Linear Algebra: Matrices, Eigenvalues, and SVD",
+    "summary": "Matrices as linear transformations. Eigenvalues as the DNA of a matrix. SVD as the fundamental decomposition behind PCA, compression, and recommendation systems.",
+    "learning_goals": [
+      "Read a matrix as a transformation",
+      "Compute and interpret eigenvalues",
+      "Understand SVD and its applications",
+      "See why SVD powers recommendation and PCA"
+    ],
+    "long_intro": "You know vectors and the dot product. Now matrices. A matrix is not just a grid of numbers — it is a linear transformation that takes vectors as input and returns vectors as output. Every layer in every neural network is a matrix multiplication. Understanding matrices deeply means understanding what happens when data flows through a model. Eigenvalues describe the fundamental directions a matrix acts along. Singular value decomposition (SVD) breaks any matrix into rotation, scaling, and rotation — and this single idea powers PCA, image compression, and the collaborative filtering behind every recommendation system.",
+    "deep_explanation": [
+      {
+        "heading": "Matrices as linear transformations",
+        "body": "An n×m matrix maps vectors in R^m to vectors in R^n. When you multiply a matrix by a vector, you are transforming that vector — rotating it, scaling it, or projecting it. A neural network layer is exactly this: y = Wx + b, where W is a matrix and x is the input vector. The 1000×1000 weight matrix in a transformer is a linear transformation on a 1000-dimensional space. Understanding this unlocks how models reshape data.",
+        "code": "import numpy as np\n\n# A 2x2 matrix as a transformation\nW = np.array([[2, 0], [0, 3]])\n\n# Apply to a vector\nx = np.array([1, 1])\ny = W @ x\nprint(f'W @ [1, 1] = {y}')  # [2, 3]\n\n# The matrix scales x by 2 in the first direction and 3 in the second"
+      },
+      {
+        "heading": "Eigenvalues and eigenvectors",
+        "body": "An eigenvector of a matrix W is a vector whose direction does not change when W is applied — it only gets scaled. The scale factor is the eigenvalue λ: Wv = λv. Eigenvalues tell you what the matrix fundamentally does: which directions it amplifies, which it shrinks, which it leaves alone. A matrix with all positive eigenvalues is like a stretching transformation. One with mixed signs is like a reflection. In optimization, eigenvalues of the Hessian tell you the curvature of the loss landscape — which directions are steep and which are flat.",
+        "code": "import numpy as np\n\nW = np.array([[2, 1], [1, 2]])\neigenvalues, eigenvectors = np.linalg.eig(W)\n\nprint(f'Eigenvalues: {eigenvalues}')  # [3, 1]\nprint(f'Eigenvectors:\\n{eigenvectors}')\n\n# Eigenvalue 3 means W scales that direction by 3x\n# Eigenvalue 1 means W leaves that direction unchanged"
+      },
+      {
+        "heading": "Singular value decomposition",
+        "body": "SVD says every matrix M can be written as M = UΣVᵀ, where U and V are rotations (orthogonal matrices) and Σ is a diagonal matrix of singular values. Any linear transformation is a rotation, then a scaling, then another rotation. This decomposition is unique and always exists. SVD is the workhorse of applied linear algebra: PCA uses it to find the directions of maximum variance in data; image compression uses it to approximate an image with a few singular values instead of millions of pixels; recommendation systems use it to factor a ratings matrix into user features and item features.",
+        "code": "import numpy as np\n\nM = np.array([[3, 1], [1, 3]])\nU, S, Vt = np.linalg.svd(M)\n\nprint(f'Singular values: {S}')  # [4, 2]\n\n# Reconstruct M from its components\nM_reconstructed = U @ np.diag(S) @ Vt\nprint(f'Reconstructed:\\n{M_reconstructed}')\nprint(f'Original:\\n{M}')"
+      },
+      {
+        "heading": "Why SVD powers modern AI",
+        "body": "Every recommender system you use — Netflix, Spotify, YouTube — is built on matrix factorization, which is SVD by another name. A user-item ratings matrix is decomposed into user vectors and item vectors. This is exactly what modern embedding models do, but learned via gradient descent rather than computed algebraically. LoRA (Low-Rank Adaptation) for fine-tuning large language models is also SVD: it approximates a large weight update with a low-rank product AB. Understanding SVD means understanding three different AI technologies at once.",
+        "code": "# LoRA in SVD terms\n# A full weight update would be a d×d matrix\n# LoRA approximates it as BA where A is r×d and B is d×r, with r << d\n\n# Example: d=1000, r=8\n# Full update: 1,000,000 parameters\n# LoRA update: 16,000 parameters (98% reduction)\n\nd = 1000\nr = 8\nfull_params = d * d\nlora_params = d * r + r * d\nreduction = 1 - lora_params / full_params\nprint(f'LoRA reduces parameters by {reduction * 100:.1f}%')"
+      }
+    ],
+    "formal_definition": "A linear transformation T: R^m → R^n is represented by a matrix M ∈ R^(n×m). An eigenvector v of M satisfies Mv = λv for some scalar λ (the eigenvalue). The singular value decomposition factorizes M = UΣVᵀ where U ∈ R^(n×n) and V ∈ R^(m×m) are orthogonal and Σ is diagonal with non-negative singular values. SVD is unique (up to signs) and exists for every matrix. The best rank-k approximation of M is M_k = U_k Σ_k V_kᵀ, giving the lowest Frobenius error.",
+    "code_example": {
+      "language": "python",
+      "code": "import numpy as np\n\n# Build a small ratings matrix (users x movies)\nR = np.array([\n    [5, 3, 0, 1],\n    [4, 0, 0, 1],\n    [1, 1, 0, 5],\n    [1, 0, 0, 4],\n])\n\n# SVD factorization\nU, S, Vt = np.linalg.svd(R, full_matrices=False)\nprint(f'Singular values: {S}')\n\n# Reconstruct with only the top 2 singular values\nk = 2\nR_approx = U[:, :k] @ np.diag(S[:k]) @ Vt[:k, :]\nprint('Reconstructed:\\n', np.round(R_approx, 1))\nprint('Original:\\n', R)",
+      "universal_explanation": "The ratings matrix is factored into user features (U), item features (V), and importance weights (S). Truncating to the top 2 singular values gives a low-rank approximation that captures the dominant patterns while smoothing out noise. This is exactly what real recommender systems do — but with embeddings learned via gradient descent."
+    },
+    "common_mistakes": [
+      "Confusing matrix multiplication with element-wise multiplication: A @ B is not the same as A * B in numpy.",
+      "Assuming every matrix has a full set of eigenvectors: only symmetric matrices are guaranteed to have a complete orthonormal eigenbasis.",
+      "Forgetting that SVD's U and V are orthogonal: their columns are unit vectors with perpendicular pairs, not arbitrary matrices.",
+      "Assuming SVD is too expensive to use: truncated SVD that computes only the top-k components is fast even for very large matrices."
+    ],
+    "real_world_usage": "PCA via SVD is used in every data preprocessing pipeline. Netflix's original recommender used SVD on ratings. LoRA fine-tuning for LLMs is rank-decomposition. Whisper's audio encoder uses attention plus linear projections that are SVD-analyzable. Every time you compress an image or reduce dimensions, SVD is likely running somewhere in the pipeline.",
+    "key_takeaways": [
+      "A matrix is a linear transformation of vectors.",
+      "Eigenvalues and eigenvectors describe what a matrix fundamentally does.",
+      "SVD factorizes any matrix into rotation, scaling, rotation.",
+      "Truncated SVD gives the best low-rank approximation.",
+      "PCA, LoRA, and recommendation systems all use SVD."
+    ],
+    "estimated_minutes": 15
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What does the matrix W = [[2, 0], [0, 3]] do to the vector [1, 1]?",
+      "choices": ["Rotates it", "Scales it to [2, 3]", "Projects it to a line"],
+      "correct_index": 1,
+      "reveal": "The matrix is diagonal, so it scales the first coordinate by 2 and the second by 3. [1, 1] becomes [2, 3]."
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "An eigenvector of W satisfies Wv = ___ v.",
+      "options": ["λ", "2", "v"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "SVD factorizes M into which three components?",
+      "choices": [
+        "U, Σ, Vᵀ (rotation, scaling, rotation)",
+        "A, B, C (encoder, hidden, decoder)",
+        "X, Y, Z (input, weights, output)"
+      ],
+      "correct_index": 0,
+      "reveal": "SVD decomposes any matrix M = UΣVᵀ where U and V are orthogonal and Σ is diagonal."
+    }},
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Use numpy to compute the SVD of the matrix [[3, 1], [1, 3]]. Print the singular values. Then reconstruct the matrix from U, S, and Vᵀ, and print the reconstructed matrix to verify it matches the original.",
+      "starter_code": "import numpy as np\n\nM = np.array([[3, 1], [1, 3]])\n\n# Compute SVD\n# U, S, Vt = np.linalg.svd(M)\n# print('Singular values:', S)\n\n# Reconstruct:\n# M_reconstructed = U @ np.diag(S) @ Vt\n# print('Reconstructed:', M_reconstructed)\n",
+      "reference_code": "import numpy as np\n\nM = np.array([[3, 1], [1, 3]])\n\nU, S, Vt = np.linalg.svd(M)\nprint('Singular values:', S)\n\nM_reconstructed = U @ np.diag(S) @ Vt\nprint('Reconstructed:')\nprint(np.round(M_reconstructed, 6))\nprint('Original:')\nprint(M)",
+      "rubric": "Code should compute SVD with np.linalg.svd, print the singular values (which are [4, 2]), reconstruct via U @ diag(S) @ Vt, and print both the reconstruction and the original. The reconstruction should equal the original within numerical precision.",
+      "language": "python",
+      "min_lines": 5
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In a paragraph, explain how LoRA uses a low-rank matrix decomposition similar to SVD to fine-tune large language models efficiently.",
+      "rubric": "Should mention: LoRA freezes the base model; the weight update is approximated as the product of two small matrices A and B (rank r); effective weight is W + BA; dramatically reduces trainable parameters (0.1-1%); similar spirit to low-rank approximation in SVD. Not required to be exact math — intuition matters.",
+      "min_words": 40
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "SVD factorizes a matrix M into U times ___ times V transpose.",
+      "options": ["Σ (sigma)", "λ (lambda)", "θ (theta)"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What is the eigenvalue of W = [[5, 0], [0, 5]] for every vector?",
+      "choices": ["0", "5", "25"],
+      "correct_index": 1,
+      "reveal": "W scales every vector by 5 in every direction. So every vector is an eigenvector with eigenvalue 5."
+    },
+    {
+      "type": "predict",
+      "question": "PCA uses which matrix decomposition?",
+      "choices": ["LU decomposition", "QR decomposition", "SVD"],
+      "correct_index": 2,
+      "reveal": "PCA computes SVD of the centered data matrix. The top singular vectors are the principal components."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Center the data by subtracting the mean",
+        "Compute the SVD of the centered data matrix",
+        "Take the top-k singular vectors as principal components",
+        "Project the data onto these components for dimensionality reduction"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why a neural network layer is a linear transformation.",
+      "rubric": "Should mention that a layer computes y = Wx + b where W is a matrix and x is a vector; matrix multiplication is a linear transformation from R^m to R^n; adding bias shifts it but the core operation is linear.",
+      "min_words": 25
+    }
+  ]
+}

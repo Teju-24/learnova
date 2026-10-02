@@ -1,0 +1,157 @@
+{
+  "concept_slug": "transformers-attention",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Transformers: The Engine Behind Modern AI",
+    "summary": "Transformers are the architecture behind GPT, Claude, Gemini, and every modern language model. Their key idea — attention — lets each word look at every other word.",
+    "learning_goals": [
+      "Understand what a transformer is at a high level",
+      "Understand attention as 'looking at other words'",
+      "See why transformers beat earlier architectures",
+      "Read a conceptual description of self-attention"
+    ],
+    "long_intro": "In 2017, a paper called 'Attention Is All You Need' introduced the transformer, and everything changed. Every major language model you have heard of — GPT-4, Claude, Gemini, Llama — is a transformer. Before transformers, models processed text one word at a time, like reading a book through a straw. Transformers process all words at once and let each word decide which other words matter to it. That simple change is what made modern AI possible. This lesson explains the intuition without any heavy math.",
+    "deep_explanation": [
+      {
+        "heading": "The problem with earlier models",
+        "body": "Before transformers, language models used recurrent neural networks (RNNs). An RNN reads a sentence word by word, maintaining a hidden state that summarises everything it has seen. Two problems: (1) it is slow, because words must be processed sequentially; (2) it forgets, because the hidden state has limited capacity and long-distance relationships get lost. If you asked an RNN about a word 500 words ago, it likely would have forgotten. Language, unfortunately, is full of long-distance dependencies: 'The cat that chased the mouse that ate the cheese was black' — what colour is the cat? You have to remember across many words.",
+        "code": "# RNN: process one word at a time\nwords = [\"the\", \"cat\", \"chased\", \"the\", \"mouse\"]\nstate = None\n\nfor word in words:\n    # state = update(state, word)\n    print(f\"processing: {word}\")\n\nprint(\"Sequential. Slow. Forgetful.\")"
+      },
+      {
+        "heading": "The transformer idea: attention",
+        "body": "Transformers solve both problems with attention. Instead of processing words sequentially, they process all words at once. And instead of forcing information through a single hidden state, each word can directly look at every other word and decide which ones matter. When the model reads 'cat', it can look back at 'chased' and 'mouse' and figure out the relationships. This is what 'attention' means: each word pays attention to the other words it needs. The math of attention is a dot product, but the intuition is simply 'every word looks at every other word and weights them by relevance'.",
+        "code": "# Attention: each word looks at all other words\nwords = [\"the\", \"cat\", \"chased\", \"the\", \"mouse\"]\n\n# For the word 'chased', attention might decide:\nweights_for_chased = {\n    \"the\":    0.05,\n    \"cat\":    0.35,   # who did the chasing\n    \"chased\": 0.05,\n    \"the\":    0.05,\n    \"mouse\":  0.50,   # who got chased\n}\n\nprint(\"Attention weights for 'chased':\")\nfor w, v in weights_for_chased.items():\n    print(f\"  {w}: {v}\")"
+      },
+      {
+        "heading": "Queries, keys, and values",
+        "body": "Attention is usually described with three words: query, key, and value. Each word produces all three. The query is 'what am I looking for?' The key is 'what do I offer?' The value is 'what do I actually contain?' To decide how much word A attends to word B, we compare A's query to B's key (using a dot product), get a score, and use that score to weight B's value. The result is a mix of all the values, weighted by relevance. When the model reads 'chased', its query might look for 'who or what was involved', which scores high against the keys of 'cat' and 'mouse', so those values dominate.",
+        "code": "# Query, Key, Value: one word's perspective\n# When processing 'chased':\n\nquery_chased = [1.0, 0.5]   # what I'm looking for\n\n# Other words offer keys:\nkeys = {\n    \"the\":    [0.1, 0.1],\n    \"cat\":    [0.9, 0.4],   # key matches the query well\n    \"mouse\":  [0.8, 0.5],   # key also matches well\n    \"chased\": [0.2, 0.2],\n}\n\n# Dot products become attention scores\nimport math\ndef dot(a, b):\n    return sum(x * y for x, y in zip(a, b))\n\nfor word, key in keys.items():\n    score = dot(query_chased, key)\n    print(f\"  {word}: attention score {score:.2f}\")"
+      }
+    ],
+    "formal_definition": "A transformer is a neural network architecture built entirely from attention and feedforward layers, with no recurrence. Self-attention computes, for each token, a weighted sum of all other tokens' values, where weights come from the dot product of the token's query with each other token's key. Multi-head attention runs several attention operations in parallel and concatenates them. Feedforward layers apply a small MLP to each position. Stacking many such blocks, with residual connections and layer normalisation, produces the transformers used by GPT, Claude, and Gemini.",
+    "code_example": {
+      "language": "python",
+      "code": "# Simplified self-attention for a 3-word sentence\nimport math\n\n# Embeddings for [\"cat\", \"sat\", \"mat\"]\nX = [\n    [1.0, 0.0],   # cat\n    [0.5, 0.5],   # sat\n    [0.0, 1.0],   # mat\n]\n\ndef attention(X):\n    # Simplified: use X directly as Q, K, V\n    Q, K, V = X, X, X\n    outputs = []\n    for i, q in enumerate(Q):\n        scores = [sum(q[k] * K[j][k] for k in range(len(q))) for j in range(len(K))]\n        # softmax\n        exp = [math.exp(s) for s in scores]\n        total = sum(exp)\n        weights = [e / total for e in exp]\n        # weighted sum of values\n        out = [sum(weights[j] * V[j][k] for j in range(len(V))) for k in range(len(q))]\n        outputs.append(out)\n    return outputs\n\nresult = attention(X)\nfor i, r in enumerate(result):\n    print(f\"token {i}: {[round(x, 3) for x in r]}\")",
+      "universal_explanation": "Each token's output is a weighted mix of all other tokens' values, where the weights come from dot products between the token's query and the others' keys. In real transformers, Q, K, and V are learned projections, attention is multi-headed, and 96+ such layers are stacked — but the core operation is exactly this."
+    },
+    "common_mistakes": [
+      "Confusing transformers with the movie franchise: same name, different thing.",
+      "Thinking attention is only one direction: in the encoder, it is bidirectional; in the decoder, it is causal (each token attends only to previous tokens).",
+      "Assuming transformers are only for text: they are used for images, audio, video, and scientific data (protein folding, etc.).",
+      "Believing all attention is quadratic: yes, vanilla self-attention is O(n²) in sequence length, which is why long contexts are expensive. Several optimised variants exist."
+    ],
+    "real_world_usage": "GPT-4, Claude, Gemini, Llama, Mistral — all transformers. GitHub Copilot, Cursor, every AI writing tool — all use transformers. Whisper (speech recognition) is a transformer. ViT (vision transformer) classifies images with a transformer. AlphaFold 2 uses transformers to predict protein structures. The transformer architecture has become the dominant approach in almost every AI subfield, not because it was incremental but because it removed a fundamental bottleneck.",
+    "key_takeaways": [
+      "Transformers replace sequential processing with attention.",
+      "Attention lets each word look at every other word and weight them by relevance.",
+      "Each word produces a query, key, and value — attention is a dot-product match.",
+      "Transformers power almost every modern AI model.",
+      "The 2017 paper 'Attention Is All You Need' introduced the architecture."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Before transformers, language models used ___ neural networks that processed words one at a time.",
+      "options": ["recurrent", "convolutional", "linear"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What does 'attention' allow a word to do?",
+      "choices": [
+        "Look at every other word and decide which ones matter",
+        "Change its meaning based on position only",
+        "Forget the previous words"
+      ],
+      "correct_index": 0,
+      "reveal": "Attention is the mechanism by which each word weighs every other word by relevance and combines their information."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "In Q/K/V terms, what does the QUERY represent?",
+      "choices": [
+        "What this word is looking for",
+        "What this word offers to others",
+        "What this word contains"
+      ],
+      "correct_index": 0,
+      "reveal": "The query is 'what am I looking for?' The key is 'what do I offer?' The value is 'what do I contain?'"
+    }},
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why did transformers replace RNNs for most NLP tasks?",
+      "choices": [
+        "They are easier to train in Python",
+        "They process all tokens in parallel and can capture long-distance relationships",
+        "They use fewer parameters"
+      ],
+      "correct_index": 1,
+      "reveal": "RNNs are sequential (slow) and forget long-range context. Transformers process all tokens in parallel and let each token attend to any other token, no matter the distance."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Attention weights for one token\ndef attention(scores):\n    # scores: raw match scores\n    return scores   # not normalised\n\nscores = [10.0, 3.0, 2.0, 1.0]\nweights = attention(scores)\nprint(weights)\n# Expected: values that sum to 1.0",
+      "wrong_line": 4,
+      "explanation": "The function returns raw scores instead of applying softmax. Attention weights must sum to 1, otherwise the weighted sum is not a proper weighted average. The correct function applies softmax: exp(score)/sum(exp(scores))."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what attention lets a transformer do that an RNN could not.",
+      "rubric": "Should mention that attention lets every token look at every other token directly, regardless of distance, and process all tokens in parallel rather than sequentially.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The 2017 paper that introduced the transformer was called 'Attention Is ___ You Need'.",
+      "options": ["All", "Everything", "What"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "In self-attention, Q is compared against K using which operation?",
+      "choices": ["Sum", "Dot product", "Sort"],
+      "correct_index": 1,
+      "reveal": "The dot product between Q and K gives a similarity score, which becomes the raw attention weight before softmax."
+    },
+    {
+      "type": "predict",
+      "question": "Why is vanilla self-attention considered expensive for long sequences?",
+      "choices": [
+        "It uses too much memory",
+        "Its cost scales quadratically with sequence length (O(n²))",
+        "It requires special hardware"
+      ],
+      "correct_index": 1,
+      "reveal": "Every token attends to every other token, so for n tokens, the attention matrix has n² entries. Doubling the sequence length quadruples the computation."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Each token is projected into Query, Key, and Value vectors",
+        "Compute dot product between each Query and all Keys",
+        "Apply softmax to convert scores into attention weights",
+        "Take weighted sum of Values using those weights",
+        "Concatenate multiple attention heads and pass through feedforward layer"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why the transformer's parallel processing is a major advantage over RNNs.",
+      "rubric": "Should mention that RNNs must process words sequentially (one at a time), making them slow on long sequences and unable to use modern parallel hardware efficiently. Transformers process all tokens at once, enabling much faster training and inference.",
+      "min_words": 20
+    }
+  ]
+}

@@ -1,0 +1,54 @@
+{
+  "Version": 1,
+  "WorkspaceRootPath": "C:\\Users\\test\\Downloads\\learnova\\",
+  "Documents": [
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\test\\Downloads\\learnova\\.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:.gitignore||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    },
+    {
+      "AbsoluteMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|C:\\Users\\test\\Downloads\\learnova\\middleware.ts||{3B902123-F8A7-4915-9F01-361F908088D0}",
+      "RelativeMoniker": "D:0:0:{A2FE74E1-B743-11D0-AE1A-00A0C90FFFC3}|\u003CMiscFiles\u003E|solutionrelative:middleware.ts||{3B902123-F8A7-4915-9F01-361F908088D0}"
+    }
+  ],
+  "DocumentGroupContainers": [
+    {
+      "Orientation": 0,
+      "VerticalTabListWidth": 256,
+      "DocumentGroups": [
+        {
+          "DockedWidth": 200,
+          "SelectedChildIndex": 0,
+          "Children": [
+            {
+              "$type": "Document",
+              "DocumentIndex": 0,
+              "Title": ".gitignore",
+              "DocumentMoniker": "C:\\Users\\test\\Downloads\\learnova\\.gitignore",
+              "RelativeDocumentMoniker": ".gitignore",
+              "ToolTip": "C:\\Users\\test\\Downloads\\learnova\\.gitignore",
+              "RelativeToolTip": ".gitignore",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "00000000-0000-0000-0000-000000000000.000000|iVBORw0KGgoAAAANSUhEUgAAACgAAAAoCAYAAACM/rhtAAAAAXNSR0IArs4c6QAAAARnQU1BAACxjwv8YQUAAAAJcEhZcwAADsMAAA7DAcdvqGQAAARgSURBVFhH7VfJVhNBFK1I4jJy9CdYutaFhg0S/wDBkSF4FHDiIAJ6XMgQYpjDYBjEsGDJoEscfkC\u002BQFcsUTxHyUj5Xg1JdbqqM0g8Lrzkpl69rq6\u002B9W6luyH/NCilIvp34RKtDWtra6CfZhfBYxbxmCdZjvUccmwO\u002BHhOer4nEglfeyDwGYf\u002BEWKxGM1kMkamVaYFs3FaadP06OiI4oK/fP1Ko9HFbzORyFlxmYI4IVobZOVgcsaMZEYyI6jGGQIis60kno84c/o0qa31VXs8J3emZ2aKEmkUyGHcAUXCer7L5SLV1dXEd/ECiPTsTE1NFxRpVLC6ukobGhrY6jc2NkS2PNTU1JDd3V3i9/u5G1DV/f19svP\u002Bw/dkMunruHvHuCeNAl\u002B/XqVXrnCB3GxANsBQdmAKsR1y4yCCasmMu6qKrK\u002Bvk7q6OrZ1VJEfP30CkSlfZ8ddrUgHi/MvKloGS6doyH2KRJFer5ecP3cO7HbviCE2GCu4srJCGxsbYbIjsrl5PBbv7e2JjBVuj4d0dXZqtRgFLoPAJiFQRc5aRM5eGbrYCDktJMThgx8HUDV5Ls9jz\u002BN2kzexGLnXpRdotlheOAu8sJqzi0PkWuv5Xu8p9gvWEec2QasasbS0TJuuNrH9srW5KbLHi3r/ZVbByakpcv9el1GLFotLS\u002BzJkEgmFaY4ExBLQj4u4ng8weJ4Alsg9oGHFsbp4WGc/hJMpdI09DJsLGERFuPCBDEn89iFBrt4lFnKbi1WiNEFYB5ln1EgurhIr129xi3eqqzF4xMT5OGD\u002B0YtWkSjUfbAV62UdkpabU0yC83W2u2VFgdDIWMJHV4W4AvXBMQwz10g/KYVWzFWHh4a03ACXR6gTXLw2TVYePWK3rh\u002Bg72NbFfY4vDYGOl\u002B9NCoRYuFhQX2LiftUq20WepoK9Jubc7iFB0OBo01NFvMvmFR6JskgN\u002BAOUUqa5H\u002BKpDlHy1Y3nQQIC9hw9z8PL1186aweEtkjxf19X54DrvJy3CY9HR3G7VoMTc3zy2WFuZZ6Wwp0mwr469D\u002BhOYBIsHh0eMNXSwWJyDjUqBvG4e4Aj/GGE5Jm8PGhjLGpmdpS3NzQTuhWR7uzIWXwKL4V2QjIZCpLenR6vFLDAyS5tbuMDCEBWwNnpAtdTjTOAoCHysF1jYYkfgGKC1MSNPnET\u002Bq5kKYwWnZyK0tbWFVfBthS0eCY6Svt7HpVkM/7eCwFYQmOaJvEU6VkqFoWoSTOBIkPQ96S3RYiw7fiQxp7AoFBAn4TTGWEH4p5q2tbWRFFTw3dttkT1eSIuHhkfIQN\u002BT0iyG13AaaAswgUWjyIqpYAKHhslAf1\u002BpFougIGAgCitDnERZFk9MTtL2QPtfsfjF4BB5NtBfmsXjE5P0djtYnEqXXZliUEig440ahVVSnITTjdooUG5CXGEliSjrSRIeG4ezcPPLCUSMNRW5bIx/0OJXNsdimeN9SyxaGT9/9tSo5T/KByG/AQC3UsheIqVnAAAAAElFTkSuQmCC",
+              "WhenOpened": "2026-09-27T04:25:03.755Z",
+              "EditorCaption": ""
+            },
+            {
+              "$type": "Document",
+              "DocumentIndex": 1,
+              "Title": "middleware.ts",
+              "DocumentMoniker": "C:\\Users\\test\\Downloads\\learnova\\middleware.ts",
+              "RelativeDocumentMoniker": "middleware.ts",
+              "ToolTip": "C:\\Users\\test\\Downloads\\learnova\\middleware.ts",
+              "RelativeToolTip": "middleware.ts",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA==",
+              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.003213|",
+              "WhenOpened": "2026-09-27T04:25:03.191Z",
+              "EditorCaption": ""
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,145 @@
+{
+  "concept_slug": "training-embeddings-with-gradient-descent",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Training Embeddings with Gradient Descent",
+    "summary": "Embeddings are not written by hand — they are learned. The same gradient descent that trains neural networks is what makes embeddings capture meaning.",
+    "learning_goals": [
+      "Understand that embeddings are learned, not designed",
+      "See how gradient descent trains embeddings",
+      "Understand the training objective (pull similar, push apart)",
+      "Read a simple embedding training loop"
+    ],
+    "long_intro": "You know what embeddings are — vectors that capture meaning. But where do they come from? Every embedding in every AI system was learned through training. The same gradient descent that trains neural networks is what turns random numbers into vectors where 'cat' is close to 'kitten' and far from 'fridge'. This lesson shows you how that happens. The training objective is simple: for pairs that should be similar, pull the embeddings together; for pairs that should be different, push them apart. Repeat millions of times, and the geometry of meaning emerges.",
+    "deep_explanation": [
+      {
+        "heading": "Embeddings start random",
+        "body": "When training begins, every item — every word, every image, every user — is assigned a random vector. There is no meaning yet. 'Cat' might be at [0.3, -0.8, 0.1] and 'kitten' at [-0.5, 0.2, 0.7]. These numbers are just noise. The job of training is to adjust these vectors until the geometry reflects meaning. The adjustment is done by gradient descent — the same algorithm you learned earlier.",
+        "code": "import random\n\nrandom.seed(42)\n\n# Initial random embeddings for three words\nembeddings = {\n    \"cat\":    [random.random(), random.random(), random.random()],\n    \"kitten\": [random.random(), random.random(), random.random()],\n    \"fridge\": [random.random(), random.random(), random.random()],\n}\n\nfor word, vec in embeddings.items():\n    print(f\"{word}: {[round(x, 2) for x in vec]}\")"
+      },
+      {
+        "heading": "The training objective: pull similar, push apart",
+        "body": "Training an embedding model uses pairs of examples. Some pairs are similar ('cat' and 'kitten', or an image and its caption). Some pairs are different ('cat' and 'fridge'). For each pair, the model computes the current similarity between the two embeddings. If the pair is similar but the similarity is low, the loss is high — the model should adjust both embeddings to be closer. If the pair is different but the similarity is high, the loss is high — the model should push them apart. Gradient descent then updates all the embeddings to reduce this loss.",
+        "code": "import math\n\ndef distance(a, b):\n    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))\n\n# Suppose we want cat and kitten close\ncat    = [0.3, -0.8, 0.1]\nkitten = [-0.5, 0.2, 0.7]\n\nprint(f\"distance: {distance(cat, kitten):.3f}\")\nprint(\"If similar pair: this distance should decrease during training\")"
+      },
+      {
+        "heading": "One training step",
+        "body": "Here is one training step, written simply. For a pair of similar items, we compute how far apart they are, compute the gradient of the loss with respect to each embedding, and move both embeddings slightly toward each other. For a dissimilar pair, we do the opposite — move them apart. Repeat over millions of pairs, and the embeddings gradually organise themselves so that similar items are close and dissimilar items are far. This is exactly what gradient descent does to neural network weights, applied here to the embedding vectors themselves.",
+        "code": "def train_step(emb_a, emb_b, similar, lr=0.01):\n    # Simple update: move toward (similar) or away (not similar)\n    new_a = emb_a[:]\n    new_b = emb_b[:]\n    for i in range(len(emb_a)):\n        diff = emb_a[i] - emb_b[i]\n        if similar:\n            # Move them closer\n            new_a[i] -= lr * diff\n            new_b[i] += lr * diff\n        else:\n            # Push them apart\n            new_a[i] += lr * diff\n            new_b[i] -= lr * diff\n    return new_a, new_b\n\ncat    = [0.3, -0.8, 0.1]\nkitten = [-0.5, 0.2, 0.7]\n\nfor step in range(10):\n    cat, kitten = train_step(cat, kitten, similar=True, lr=0.05)\n\nprint(f\"After training: distance = {distance(cat, kitten):.4f}\")"
+      }
+    ],
+    "formal_definition": "Embeddings are learned by minimizing a similarity-based loss. Common objectives include triplet loss (pull anchor-positive closer than anchor-negative by a margin), contrastive loss (binary: pull similar pairs together, push dissimilar pairs apart), and InfoNCE (a softmax over a batch of negatives). Gradient descent is applied to the embedding parameters with respect to this loss, using stochastic mini-batches.",
+    "code_example": {
+      "language": "python",
+      "code": "import math\nimport random\n\nrandom.seed(0)\n\ndef dist(a, b):\n    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))\n\ndef train(embeddings, pairs, epochs=100, lr=0.05):\n    for epoch in range(epochs):\n        for w1, w2, similar in pairs:\n            a = embeddings[w1]\n            b = embeddings[w2]\n            for i in range(len(a)):\n                diff = a[i] - b[i]\n                if similar:\n                    a[i] -= lr * diff * 0.5\n                    b[i] += lr * diff * 0.5\n                else:\n                    a[i] += lr * diff * 0.5\n                    b[i] -= lr * diff * 0.5\n\nemb = {\n    \"cat\":    [0.5, -0.3],\n    \"kitten\": [-0.4, 0.2],\n    \"fridge\": [0.9, 0.8],\n}\n\npairs = [\n    (\"cat\", \"kitten\", True),\n    (\"cat\", \"fridge\", False),\n    (\"kitten\", \"fridge\", False),\n]\n\ntrain(emb, pairs, epochs=100, lr=0.1)\n\nprint(\"cat–kitten:\", round(dist(emb[\"cat\"], emb[\"kitten\"]), 3))\nprint(\"cat–fridge:\", round(dist(emb[\"cat\"], emb[\"fridge\"]), 3))\nprint(\"kitten–fridge:\", round(dist(emb[\"kitten\"], emb[\"fridge\"]), 3))",
+      "universal_explanation": "The training loop pulls 'cat' and 'kitten' closer together and pushes both away from 'fridge'. After many iterations, 'cat' and 'kitten' have similar embeddings and 'fridge' sits far away. This is the essence of how every embedding model, from word2vec to OpenAI's text-embedding-3, is trained."
+    },
+    "common_mistakes": [
+      "Thinking embeddings are hand-designed: they are learned from data, one gradient step at a time.",
+      "Assuming a small dataset is enough: embeddings need millions of examples to capture rich meaning. Small datasets produce weak embeddings.",
+      "Forgetting that quality depends on the training pairs: bad pairs (noisy labels) produce bad embeddings.",
+      "Believing all embeddings are universal: embeddings trained on one domain may not transfer well to another."
+    ],
+    "real_world_usage": "Word2vec (2013) trained word embeddings on billions of words by predicting context. GloVe used co-occurrence statistics. OpenAI's text-embedding-3 models are trained on massive text corpora with contrastive learning. CLIP trains image and text embeddings to align in the same space. Every recommendation system you have used was trained by pulling users toward the items they interacted with and away from the ones they did not.",
+    "key_takeaways": [
+      "Embeddings start random and are learned during training.",
+      "Training pulls similar items together and pushes dissimilar ones apart.",
+      "The same gradient descent used for neural networks is used for embeddings.",
+      "Large datasets are needed to capture rich meaning.",
+      "Every modern embedding model is trained this way."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "When training begins, embeddings are initialised to ___ values.",
+      "options": ["random", "meaningful", "zero"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If 'cat' and 'kitten' are a similar pair and their embeddings are far apart, what does training do?",
+      "choices": [
+        "Leave them unchanged",
+        "Pull them closer together",
+        "Push them further apart"
+      ],
+      "correct_index": 1,
+      "reveal": "For similar pairs, the loss is high when the embeddings are far apart. Gradient descent adjusts both embeddings to be closer."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You train embeddings on only 100 similar/dissimilar pairs. What is the likely outcome?",
+      "choices": [
+        "The embeddings capture meaning very well",
+        "The embeddings are weak and capture little semantic structure",
+        "The embeddings are the same as random"
+      ],
+      "correct_index": 1,
+      "reveal": "Embeddings need millions of examples to capture rich meaning. Small training sets produce weak embeddings with little generalisation."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "def train_step(emb_a, emb_b, similar, lr=0.01):\n    for i in range(len(emb_a)):\n        diff = emb_a[i] - emb_b[i]\n        if similar:\n            emb_a[i] += lr * diff   # moving away\n            emb_b[i] -= lr * diff\n    return emb_a, emb_b",
+      "wrong_line": 5,
+      "explanation": "The sign is wrong. For similar pairs, we want to REDUCE the distance, so emb_a should move toward emb_b: emb_a[i] -= lr * diff. As written, emb_a moves away from emb_b, increasing the distance for pairs that should be similar."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain how training turns random vectors into meaningful embeddings.",
+      "rubric": "Should mention that training uses similar/dissimilar pairs, computes loss, and adjusts vectors so similar items get closer and dissimilar items move apart. Repeated over many examples, geometry emerges.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "During training, similar pairs are pulled ___ and dissimilar pairs are pushed ___.",
+      "options": ["together, apart", "apart, together", "randomly, randomly"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Why do embedding models need millions of examples?",
+      "choices": [
+        "To fit in memory",
+        "To capture rich semantic relationships across many contexts",
+        "To avoid random initialisation"
+      ],
+      "correct_index": 1,
+      "reveal": "Meaning is complex. Only by seeing an item in millions of contexts does the model learn robust embeddings."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "def push_apart(emb_a, emb_b, lr=0.01):\n    for i in range(len(emb_a)):\n        diff = emb_a[i] - emb_b[i]\n        emb_a[i] -= lr * diff   # wrong direction\n        emb_b[i] += lr * diff\n    return emb_a, emb_b",
+      "wrong_line": 4,
+      "explanation": "For dissimilar pairs, we want to INCREASE distance. But the code uses the same formula as 'pull together' (emb_a[i] -= lr * diff), which decreases distance. The signs should be flipped: emb_a[i] += lr * diff; emb_b[i] -= lr * diff."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Initialise embeddings randomly for all items",
+        "Sample pairs: some should be similar, some different",
+        "Compute the loss based on current similarities",
+        "Compute gradients of the loss with respect to each embedding",
+        "Update all embeddings by gradient descent"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why embedding training and neural network training share the same algorithm.",
+      "rubric": "Should mention that embeddings are parameters like any other — they have a loss, gradients, and are updated by gradient descent. The same optimisation machinery applies.",
+      "min_words": 20
+    }
+  ]
+}

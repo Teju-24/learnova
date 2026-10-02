@@ -1,0 +1,152 @@
+{
+  "concept_slug": "training-embeddings-with-gradient-descent",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Training Embeddings: Contrastive Losses and Negative Sampling",
+    "summary": "Contrastive learning trains embeddings with positive and negative pairs. InfoNCE, triplet loss, and hard negatives shape the geometry of the embedding space.",
+    "learning_goals": [
+      "Understand contrastive loss and InfoNCE",
+      "Read triplet loss and negative sampling in code",
+      "Understand hard negative mining",
+      "See how CLIP trains image-text embeddings"
+    ],
+    "long_intro": "You know training pulls similar items together and pushes dissimilar ones apart. The details matter: which pairs, what loss function, how negatives are chosen. Modern embedding models use contrastive learning, where each example has a positive (similar) and many negatives (dissimilar). InfoNCE, popularised by CLIP and used in most modern embedding models, treats the problem as classification over a batch: for each anchor, the positive is the correct answer and all others are negatives. Hard negative mining focuses training on the negatives the model finds confusing, which dramatically improves quality.",
+    "deep_explanation": [
+      {
+        "heading": "Contrastive learning with InfoNCE",
+        "body": "InfoNCE (Information Noise-Contrastive Estimation) is the loss used by CLIP, SimCLR, and most modern embedding models. Given an anchor, a positive, and a batch of negatives, it computes similarity between the anchor and every other item, then applies softmax over these similarities. The loss pushes the model to assign the highest similarity to the positive. Mathematically, it is a cross-entropy loss over similarities. This single loss unifies contrastive learning and makes it efficient to train on large batches, since every other item in the batch serves as a negative.",
+        "code": "import math\n\ndef cosine(a, b):\n    dot = sum(x * y for x, y in zip(a, b))\n    ma = math.sqrt(sum(x * x for x in a))\n    mb = math.sqrt(sum(x * x for x in b))\n    return dot / (ma * mb)\n\ndef info_nce(anchor, positive, negatives, temperature=0.1):\n    # Similarities: anchor vs positive, and anchor vs each negative\n    pos_sim = cosine(anchor, positive) / temperature\n    neg_sims = [cosine(anchor, n) / temperature for n in negatives]\n    \n    # Softmax over all similarities\n    all_sims = [pos_sim] + neg_sims\n    max_sim = max(all_sims)\n    exps = [math.exp(s - max_sim) for s in all_sims]\n    total = sum(exps)\n    \n    # Loss = -log(probability assigned to positive)\n    return -math.log(exps[0] / total)\n\nanchor = [1.0, 0.0]\npos = [0.9, 0.1]\nnegs = [[0.0, 1.0], [-1.0, 0.0], [0.2, 0.8]]\n\nprint(f\"InfoNCE loss: {info_nce(anchor, pos, negs):.4f}\")"
+      },
+      {
+        "heading": "Triplet loss",
+        "body": "Triplet loss uses three items: an anchor, a positive, and a negative. The loss is max(0, dist(anchor, positive) - dist(anchor, negative) + margin). The margin forces the negative to be at least `margin` farther than the positive. If the model already satisfies this, the loss is zero and no gradient flows. This is simple and effective, and it is what face recognition systems (FaceNet) use to train identity embeddings.",
+        "code": "def distance(a, b):\n    return math.sqrt(sum((x - y) ** 2 for x, y in zip(a, b)))\n\ndef triplet_loss(anchor, positive, negative, margin=0.2):\n    pos_dist = distance(anchor, positive)\n    neg_dist = distance(anchor, negative)\n    return max(0.0, pos_dist - neg_dist + margin)\n\nanchor   = [1.0, 0.0]\npositive = [0.9, 0.1]\nnegative = [0.2, 0.8]\n\nloss = triplet_loss(anchor, positive, negative)\nprint(f\"triplet loss: {loss:.4f}\")"
+      },
+      {
+        "heading": "Hard negative mining",
+        "body": "Not all negatives are equally useful. An 'easy' negative (very dissimilar) produces zero loss and no learning. A 'hard' negative (confusingly similar but actually different) produces a large loss and strong gradients. Hard negative mining focuses training on these difficult cases. It is what makes contrastive learning efficient — instead of wasting computation on obviously different pairs, the model focuses on the cases where it is wrong. Most modern systems periodically refresh hard negatives from the current embeddings.",
+        "code": "# Hard negative mining (conceptual)\ndef mine_hard_negatives(anchor, positives, candidate_negatives, k=3):\n    # Score each candidate negative by similarity to the anchor\n    scored = [(c, cosine(anchor, c)) for c in candidate_negatives]\n    scored.sort(key=lambda x: -x[1])   # most similar first\n    return [c for c, _ in scored[:k]]\n\nanchor = [1.0, 0.0]\ncandidates = [\n    [0.9, 0.1],    # too similar (false negative if labelled different)\n    [0.5, 0.5],    # hard negative\n    [0.0, 1.0],    # medium\n    [-1.0, 0.0],   # easy\n]\n\nhard = mine_hard_negatives(anchor, [], candidates, k=2)\nprint(\"Hard negatives:\", hard)"
+      },
+      {
+        "heading": "CLIP: contrastive image-text embeddings",
+        "body": "CLIP (Contrastive Language-Image Pre-training) trains image and text embeddings to align in a shared space. Given a batch of (image, caption) pairs, CLIP treats each matching pair as a positive and every non-matching pair as a negative. It then uses InfoNCE to train both encoders. After training, an image embedding and its correct caption embedding are close, and unrelated captions are far. This enables zero-shot image classification: given an image and a set of possible class names, CLIP picks the class whose text embedding is closest to the image embedding.",
+        "code": "# CLIP batch loss (conceptual)\n#\n# Batch of N (image, caption) pairs\n# Compute image embeddings: I_1..I_N\n# Compute text embeddings:  T_1..T_N\n#\n# Similarity matrix S[i][j] = I_i · T_j\n# Diagonal entries are positives; off-diagonal are negatives.\n# Loss = symmetric cross-entropy across rows and columns.\n\nprint(\"CLIP: align image and text embeddings in a shared space\")\nprint(\"Enables zero-shot classification by comparing image to class text embeddings\")"
+      }
+    ],
+    "formal_definition": "Contrastive learning trains embeddings by minimizing a loss that rewards similarity for positive pairs and penalizes similarity for negative pairs. InfoNCE loss for an anchor x with positive x+ and negatives x- is -log(exp(sim(x, x+)/τ) / Σ_j exp(sim(x, x_j)/τ)). Triplet loss is max(0, d(x, x+) - d(x, x-) + margin). Hard negative mining selects negatives with high similarity to the anchor. CLIP uses a symmetric InfoNCE over image-text pairs.",
+    "code_example": {
+      "language": "python",
+      "code": "import math\n\ndef cosine(a, b):\n    dot = sum(x * y for x, y in zip(a, b))\n    ma = math.sqrt(sum(x * x for x in a))\n    mb = math.sqrt(sum(x * x for x in b))\n    return dot / (ma * mb)\n\ndef info_nce_batch(anchors, positives, temperature=0.1):\n    \"\"\"Batch InfoNCE: for each anchor, the positive is diagonal; all other positives are negatives.\"\"\"\n    n = len(anchors)\n    # Similarity matrix\n    S = [[cosine(anchors[i], positives[j]) / temperature for j in range(n)] for i in range(n)]\n    losses = []\n    for i in range(n):\n        # Softmax over row i; loss = -log(prob of j == i)\n        max_s = max(S[i])\n        exps = [math.exp(s - max_s) for s in S[i]]\n        total = sum(exps)\n        losses.append(-math.log(exps[i] / total))\n    return sum(losses) / n\n\n# 3 (anchor, positive) pairs\nanchors   = [[1.0, 0.0], [0.0, 1.0], [0.7, 0.7]]\npositives = [[0.9, 0.1], [0.1, 0.9], [0.75, 0.65]]\n\nloss = info_nce_batch(anchors, positives)\nprint(f\"Batch InfoNCE: {loss:.4f}\")",
+      "universal_explanation": "The batch InfoNCE computes all pairwise similarities between anchors and positives, then for each anchor applies softmax over the row and takes the loss as the negative log-probability of the correct (diagonal) match. Every other positive in the batch serves as a negative — this is why large batches matter."
+    },
+    "common_mistakes": [
+      "Using too small a batch: InfoNCE needs many negatives per anchor, which means large batches (thousands of pairs for good quality).",
+      "Forgetting the temperature parameter: it controls how peaked the softmax is. Small τ = more focus on hard negatives; large τ = softer distribution.",
+      "Treating all negatives equally: hard negatives contribute more gradient. Mining them periodically is standard practice.",
+      "Assuming any pair works: contrastive learning depends on the quality of positive pairs. Noisy positives give bad embeddings."
+    ],
+    "real_world_usage": "CLIP (OpenAI), SigLIP (Google), ImageBind (Meta) all use contrastive learning. Sentence Transformers (SBERT) use InfoNCE for text embeddings. OpenAI's text-embedding-3 and Anthropic's embedding models use similar objectives at scale. Every modern search engine, recommendation system, and RAG pipeline uses embeddings trained with these loss functions. The choice of loss, temperature, and negative sampling strategy is what separates a mediocre embedding from a great one.",
+    "key_takeaways": [
+      "InfoNCE is the contrastive loss used by CLIP and most modern embedding models.",
+      "Triplet loss uses anchor, positive, and negative with a margin.",
+      "Hard negative mining focuses on the negatives the model gets confused by.",
+      "CLIP aligns image and text embeddings in a shared space.",
+      "Batch size matters because every other item in the batch is a negative."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "InfoNCE is the contrastive loss used by CLIP and most modern ___ models.",
+      "options": ["embedding", "language", "vision"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "In triplet loss, what is the role of the margin?",
+      "choices": [
+        "It scales the learning rate",
+        "It forces the negative to be at least `margin` farther from the anchor than the positive",
+        "It adds random noise"
+      ],
+      "correct_index": 1,
+      "reveal": "The margin ensures the model does not settle for a small positive/negative gap. The negative must be at least `margin` farther, or the loss is nonzero and gradients flow."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why do modern contrastive methods want LARGE batches?",
+      "choices": [
+        "Because gradients are noisier",
+        "Because every other item in the batch serves as a negative, giving more training signal",
+        "Because larger batches train slower"
+      ],
+      "correct_index": 1,
+      "reveal": "InfoNCE treats all other items in the batch as negatives. Larger batches mean more negatives per anchor, which improves the quality of the learned embeddings."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Triplet loss\ndef triplet_loss(anchor, positive, negative, margin=0.2):\n    pos_dist = distance(anchor, positive)\n    neg_dist = distance(anchor, negative)\n    return max(0.0, pos_dist + neg_dist + margin)\n\n# Should be: loss = max(0, pos_dist - neg_dist + margin)",
+      "wrong_line": 5,
+      "explanation": "The formula uses `pos_dist + neg_dist` instead of `pos_dist - neg_dist`. The correct triplet loss subtracts the negative distance, so a large negative distance reduces the loss (good). The current formula would reward making the negative FAR apart but push the positive further too, breaking the training signal."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what hard negative mining is and why it matters.",
+      "rubric": "Should mention that hard negatives are items that are semantically different but have similar embeddings, so the model is confused. Training on them produces strong gradients and improves embedding quality significantly.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The temperature parameter in InfoNCE controls how peaked the ___ distribution is.",
+      "options": ["softmax", "uniform", "sigmoid"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "In CLIP training, what are the positives?",
+      "choices": [
+        "Random image-text pairs",
+        "Matching image-caption pairs in the batch",
+        "All pairs in the batch"
+      ],
+      "correct_index": 1,
+      "reveal": "In CLIP, the positives are the (image, caption) pairs that actually go together. All other image-text combinations in the batch are treated as negatives."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "# InfoNCE loss\ndef info_nce(anchor, positive, negatives):\n    sim_pos = cosine(anchor, positive)\n    sim_negs = [cosine(anchor, n) for n in negatives]\n    # Loss = 1 - sim_pos (forgetting negatives)\n    return 1 - sim_pos",
+      "wrong_line": 5,
+      "explanation": "The loss ignores negatives entirely, so the model would only learn to make positives similar without any pressure to make negatives dissimilar. Contrastive learning requires both terms. The correct loss is -log(exp(sim_pos/τ) / sum(exp(sim_all/τ)))."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Sample a batch of (anchor, positive) pairs",
+        "Compute embeddings for all items in the batch",
+        "Compute pairwise similarity matrix between anchors and positives",
+        "Apply InfoNCE loss with positives on the diagonal",
+        "Update embeddings via gradient descent",
+        "Periodically refresh hard negatives using current embeddings"
+      ],
+      "correct_order": [0, 1, 2, 3, 4, 5]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why CLIP enables zero-shot image classification.",
+      "rubric": "Should mention that CLIP aligns image and text embeddings in a shared space. To classify an image, compute its embedding and compare it to text embeddings of class names — the closest match is the prediction.",
+      "min_words": 25
+    }
+  ]
+}

@@ -1,0 +1,150 @@
+{
+  "concept_slug": "supervised-learning",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Supervised Learning: Loss, Training, and Generalization",
+    "summary": "Behind the scenes, supervised learning is optimization. A loss function measures how wrong the model is, and training minimizes that loss over many examples.",
+    "learning_goals": [
+      "Understand loss functions as measures of model error",
+      "See the training loop as iterated loss minimization",
+      "Understand generalization and why it's the real goal",
+      "Read a simple training loop in Python"
+    ],
+    "long_intro": "You already know that supervised learning trains a model on labeled examples. This lesson goes one level deeper and asks: how does the model actually learn? The answer is optimization — a loss function measures how wrong the model's predictions are, and training adjusts the model's parameters to make that loss as small as possible. Over many iterations, the model's predictions align with the labels. The deeper goal, though, is not to minimize loss on the training set — it is to minimize loss on data the model has never seen. This lesson walks through both the mechanics of training and the crucial concept of generalization.",
+    "deep_explanation": [
+      {
+        "heading": "Loss: measuring how wrong a prediction is",
+        "body": "A loss function takes the model's prediction and the true label and returns a single number expressing how wrong the prediction was. For classification with probabilities, a common loss is cross-entropy: if the model predicts 0.9 for the correct class, the loss is small; if it predicts 0.1, the loss is large. For regression, a common loss is squared error: (prediction - true)^2. The exact formula depends on the task. What matters is that the loss is a single scalar number summarizing prediction quality — lower is better.",
+        "code": "def squared_error(prediction, true_value):\n    return (prediction - true_value) ** 2\n\nprint(squared_error(3.0, 3.0))   # 0.0  (perfect)\nprint(squared_error(5.0, 3.0))   # 4.0  (bad)\nprint(squared_error(2.8, 3.0))   # 0.04 (very good)"
+      },
+      {
+        "heading": "The training loop",
+        "body": "Training is an iterative process. In each round, the model makes predictions on a batch of training examples, the loss is computed, and the model's parameters are nudged slightly in the direction that reduces the loss. This nudge is done by gradient descent — a technique we will cover in depth later. For now, the important idea is that training is repetitive loss minimization: the same cycle repeats thousands or millions of times, and each round makes the model slightly less wrong on the training examples.",
+        "code": "# A conceptual training loop\nfor epoch in range(10):\n    total_loss = 0\n    for x, y in training_data:\n        pred = model(x)\n        loss = loss_fn(pred, y)\n        total_loss += loss\n        update_model(loss)   # nudges parameters to reduce loss\n    print(f\"Epoch {epoch}, avg loss: {total_loss / len(training_data):.3f}\")"
+      },
+      {
+        "heading": "Generalization: the real goal",
+        "body": "It is easy to make the training loss drop to zero. If the model has enough parameters, it can memorize every training example and its loss will be perfect. But memorization is not learning. The real goal is generalization: performing well on data the model has never seen. This is why we hold back a test set and evaluate on it. A model whose test loss is close to its training loss is generalizing. A model whose test loss is much higher than its training loss is overfitting. Every design decision in modern AI — regularization, dropout, data augmentation, early stopping — exists to improve generalization.",
+        "code": "# Train loss and test loss across epochs\ntrain_losses = [0.9, 0.6, 0.4, 0.2, 0.1, 0.05, 0.02]\ntest_losses  = [0.95, 0.65, 0.45, 0.4, 0.42, 0.5, 0.6]\n\nfor e in range(len(train_losses)):\n    print(f\"Epoch {e}: train={train_losses[e]:.2f}  test={test_losses[e]:.2f}\")\n\n# Best test performance is around epoch 3-4, then overfitting begins"
+      },
+      {
+        "heading": "Classification vs regression",
+        "body": "Supervised learning problems come in two main flavors. Classification predicts a discrete label — spam or not spam, cat or dog, one of ten digits. Regression predicts a continuous number — house price, temperature, tomorrow's stock price. Both use the same training loop, but the loss functions differ. Classification typically uses cross-entropy; regression typically uses mean squared error. Understanding which type of problem you are facing determines the model architecture and loss function you should use.",
+        "code": "# Classification: predict a label\n# Loss: cross-entropy over class probabilities\n\n# Regression: predict a number\n# Loss: mean squared error\n\ndef mse(predictions, targets):\n    return sum((p - t) ** 2 for p, t in zip(predictions, targets)) / len(predictions)\n\nprint(mse([3.0, 4.1, 5.2], [3.0, 4.0, 5.0]))   # very small"
+      }
+    ],
+    "formal_definition": "Given a labeled dataset {(x_i, y_i)} and a parametric model f_θ, supervised learning seeks parameters θ* minimizing the expected loss L(θ) = E[ℓ(f_θ(x), y)]. Training approximates this by minimizing empirical loss over the training set, typically via stochastic gradient descent. Generalization refers to the model's loss on unseen data drawn from the same distribution as the training data.",
+    "code_example": {
+      "language": "python",
+      "code": "def mean_squared_error(predictions, targets):\n    total = 0\n    for p, t in zip(predictions, targets):\n        total += (p - t) ** 2\n    return total / len(predictions)\n\npredictions = [2.5, 3.8, 4.1]\ntargets     = [3.0, 4.0, 4.0]\n\nprint(mean_squared_error(predictions, targets))  # 0.097",
+      "universal_explanation": "MSE averages the squared differences between predictions and targets. Every value is close to its target, so the average error is small — around 0.1. Training a regression model means finding parameters that make this number as small as possible on the training set, while keeping it small on the test set."
+    },
+    "common_mistakes": [
+      "Optimizing training loss too aggressively: driving training loss to zero often means overfitting, not better learning.",
+      "Using the wrong loss for the task: squared error for classification or cross-entropy for regression both produce poor results.",
+      "Evaluating on the training set: this tells you nothing about generalization. Always report test loss.",
+      "Ignoring the shape of the loss curve: if test loss rises while training loss falls, overfitting has begun and training should stop."
+    ],
+    "real_world_usage": "Every modern AI model — GPT, Claude, image classifiers, translation systems, speech recognition — is trained by minimizing a loss function over a large labeled dataset. The specific losses differ (cross-entropy for language models, contrastive losses for embeddings, mean squared error for regression), but the pattern is universal. When you read a training log like 'loss: 0.023, val_loss: 0.041', you are looking at exactly the quantities this lesson describes.",
+    "key_takeaways": [
+      "A loss function measures how wrong a prediction is.",
+      "Training minimizes loss over many examples.",
+      "The real goal is generalization, not memorization.",
+      "Overfitting is when test loss rises while training loss falls.",
+      "Classification and regression use different loss functions."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "A lower ___ value means the model's predictions are closer to the true labels.",
+      "options": ["loss", "dimension", "batch"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If training loss keeps going down but test loss starts going up, what is happening?",
+      "choices": [
+        "The model is getting better",
+        "The model is overfitting to the training data",
+        "The test set is corrupted"
+      ],
+      "correct_index": 1,
+      "reveal": "This is the signature of overfitting: training improves while test performance degrades. Training should have stopped earlier."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Which task is a regression problem?",
+      "choices": [
+        "Predicting whether an email is spam",
+        "Predicting tomorrow's temperature in Celsius",
+        "Classifying an image as cat, dog, or rabbit"
+      ],
+      "correct_index": 1,
+      "reveal": "Temperature is a continuous number, so predicting it is regression. The other two predict discrete labels, so they are classification."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "def evaluate(model, data):\n    loss = 0\n    for x, y in data:\n        pred = model(x)\n        loss += loss_fn(pred, y)\n    return loss\n\n# Evaluate on training data\nprint(evaluate(model, training_data))",
+      "wrong_line": 8,
+      "explanation": "The function returns the total loss, not the average. Dividing by len(data) gives the mean loss, which is what should be reported. Also, evaluating on training_data rather than a held-out test set does not measure generalization — the real question is how the model performs on unseen data."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why generalization is more important than minimizing training loss.",
+      "rubric": "Should mention that what matters is performance on unseen data, and that a model can trivially minimize training loss by memorizing without learning useful patterns.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The process of adjusting model parameters to reduce loss is called ___.",
+      "options": ["training", "inference", "deployment"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "A classification model predicts probabilities {cat: 0.6, dog: 0.4}. The true label is 'dog'. Is the loss large or small?",
+      "choices": [
+        "Small, because the model got the answer right",
+        "Large, because the model assigned high probability to the wrong class",
+        "Cannot be determined"
+      ],
+      "correct_index": 1,
+      "reveal": "The model assigned only 0.4 to the correct class 'dog'. Cross-entropy loss penalizes this heavily — the loss will be significant."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "def train_step(model, x, y):\n    pred = model(x)\n    loss = loss_fn(pred, y)\n    # return the loss so we can print it\n    return loss\n    update_model(loss)\n\nfor x, y in data:\n    l = train_step(model, x, y)\n    print(l)",
+      "wrong_line": 5,
+      "explanation": "Line 5 is unreachable because line 4 already returns from the function. The update_model call never runs, so the model never learns. Fix by calling update_model before the return, or by restructuring the function."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Forward pass: model computes predictions on a batch of inputs",
+        "Loss computation: compare predictions to true labels",
+        "Backward pass: compute how each parameter contributed to the loss",
+        "Parameter update: adjust parameters to reduce future loss"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why evaluating a model on its training data is misleading.",
+      "rubric": "Should mention that the model has seen those examples during training, so performance on them does not reflect how the model will perform on new, unseen data.",
+      "min_words": 15
+    }
+  ]
+}

@@ -1,0 +1,156 @@
+{
+  "concept_slug": "langchain-basics",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "LangChain: Agents, Tools, and LCEL",
+    "summary": "LangChain Expression Language (LCEL) makes chains composable and async-friendly. Agents use tools to solve multi-step tasks.",
+    "learning_goals": [
+      "Read LangChain Expression Language (LCEL)",
+      "Understand agents and tool use",
+      "Understand streaming, batching, and async chains",
+      "Design an agentic workflow"
+    ],
+    "long_intro": "You know the basic LangChain building blocks. Now let's look at the two things that make it powerful: LCEL (LangChain Expression Language) and agents. LCEL is a composable syntax for building chains that supports streaming, batching, and async execution for free. Agents use tools — search, calculators, APIs — to solve tasks that require multiple steps. Together they let you build apps where the model decides what to do next, not just what to say. This lesson covers both and shows you how to design a robust agentic workflow.",
+    "deep_explanation": [
+      {
+        "heading": "LangChain Expression Language (LCEL)",
+        "body": "LCEL is a syntax for building chains by piping components together. Every component is a Runnable with a standard interface: invoke, batch, stream, and their async variants. This uniformity is what makes LCEL powerful: any chain you build automatically supports streaming, parallel batching, async execution, and fallbacks. If you want to add a retry or a fallback model, you add one more piece to the pipe. No rewriting required.",
+        "code": "# LCEL (conceptual)\n# from langchain_core.runnables import RunnablePassthrough\n# from langchain_core.output_parsers import StrOutputParser\n#\n# chain = (\n#     {\"context\": retriever, \"question\": RunnablePassthrough()}\n#     | prompt\n#     | llm\n#     | StrOutputParser()\n# )\n#\n# # All of these work automatically:\n# chain.invoke(\"What is RAG?\")\n# chain.batch([\"Q1\", \"Q2\", \"Q3\"])\n# for chunk in chain.stream(\"What is RAG?\"):\n#     print(chunk, end=\"\")\n\nprint(\"LCEL: invoke, batch, stream, async — for free\")"
+      },
+      {
+        "heading": "Agents and tool use",
+        "body": "An agent is an LLM that can choose actions. Instead of executing a fixed chain, the agent decides which tool to call next based on the task. The agent loop works like this: (1) the model sees the task and the list of available tools; (2) it decides to either call a tool or finish; (3) if it calls a tool, the result is fed back; (4) repeat until the model produces a final answer. This lets the model handle tasks that require multiple steps and dynamic decisions.",
+        "code": "# Agent loop (conceptual)\ntools = {\n    \"calculator\": lambda x: eval(x),\n    \"search\": lambda q: f\"search results for: {q}\",\n}\n\ndef agent_loop(task, llm, tools, max_steps=5):\n    history = [f\"Task: {task}\"]\n    for step in range(max_steps):\n        decision = llm.decide(history, available_tools=list(tools.keys()))\n        if decision[\"type\"] == \"finish\":\n            return decision[\"answer\"]\n        tool_name = decision[\"tool\"]\n        result = tools[tool_name](decision[\"input\"])\n        history.append(f\"Used {tool_name}: {result}\")\n    return \"max steps reached\"\n\nprint(\"Agent loop: decide, act, observe, repeat\")"
+      },
+      {
+        "heading": "Streaming and async",
+        "body": "Modern LLM apps need to stream responses so users see output as it is generated. LCEL supports streaming natively: any chain can be iterated to yield tokens. Async variants (ainvoke, astream, abatch) let you run many requests concurrently, which is essential for high-throughput services. If you have used a ChatGPT-style UI that shows text typing out, that is streaming. LCEL makes it automatic.",
+        "code": "# Streaming and async (conceptual)\n# async for chunk in chain.astream(\"What is RAG?\"):\n#     print(chunk, end=\"\", flush=True)\n\n# Batch calls run in parallel with abatch:\n# results = await chain.abatch([\"Q1\", \"Q2\", \"Q3\"])\n\nprint(\"Stream for UX, batch for throughput, async for scale\")"
+      },
+      {
+        "heading": "Designing an agentic workflow",
+        "body": "When building an agent, four design decisions matter. First, tool design: tools should be simple, well-named, and well-documented so the model can use them correctly. Second, guardrails: agents can loop or misuse tools, so add max iterations, timeouts, and validation. Third, observability: log every step so you can debug why the agent chose a particular action. Fourth, fallbacks: if a tool fails or the model gets stuck, have a fallback path. These four principles separate agents that work in demos from agents that work in production.",
+        "code": "# Agentic workflow design principles\ndesign = {\n    \"tools\":         \"simple, well-named, well-documented\",\n    \"guardrails\":    \"max iterations, timeouts, validation\",\n    \"observability\": \"log every decision and tool call\",\n    \"fallbacks\":     \"graceful degradation when tools fail\",\n}\n\nfor principle, detail in design.items():\n    print(f\"{principle}: {detail}\")"
+      }
+    ],
+    "formal_definition": "LCEL (LangChain Expression Language) is a declarative syntax for composing Runnables — components with a standard interface (invoke, batch, stream, and async variants). Agents use LLMs to decide which tools to invoke at each step, iterating until a stopping condition is met. Common agent patterns include ReAct (Reasoning + Acting), Plan-and-Execute, and tool-calling agents. Production agents require guardrails (max iterations, timeouts), observability (traces), and fallback paths.",
+    "code_example": {
+      "language": "python",
+      "code": "# Agentic workflow with tool use (conceptual)\nclass SimpleAgent:\n    def __init__(self, llm, tools, max_steps=10):\n        self.llm = llm\n        self.tools = tools\n        self.max_steps = max_steps\n\n    def run(self, task):\n        history = [{\"role\": \"user\", \"content\": task}]\n\n        for step in range(self.max_steps):\n            decision = self.llm.decide(history, self.tools.keys())\n\n            if decision[\"type\"] == \"final\":\n                return decision[\"answer\"]\n\n            tool_name = decision[\"tool\"]\n            tool_input = decision[\"input\"]\n\n            if tool_name not in self.tools:\n                history.append({\"role\": \"system\", \n                                \"content\": f\"Unknown tool: {tool_name}\"})\n                continue\n\n            try:\n                result = self.tools[tool_name](tool_input)\n                history.append({\"role\": \"tool\", \"content\": str(result)})\n            except Exception as e:\n                history.append({\"role\": \"tool\", \n                                \"content\": f\"Error: {e}\"})\n\n        return \"Agent exceeded max steps\"",
+      "universal_explanation": "The agent decides each step — call a tool, observe the result, decide again. The max_steps guardrail prevents infinite loops. Tool errors are caught and fed back as observations so the model can try a different approach. This is the shape of every modern agent framework."
+    },
+    "common_mistakes": [
+      "Building an agent when a chain would do: agents are more flexible but slower and less predictable. Use chains for known workflows, agents for open-ended tasks.",
+      "Not limiting agent iterations: without a max-step guard, agents can loop forever, burning tokens.",
+      "Poorly named tools: the model chooses tools based on names and descriptions. Vague names cause wrong tool selection.",
+      "Skipping observability: agents make many decisions. Without tracing, debugging failures is nearly impossible."
+    ],
+    "real_world_usage": "LangChain and its LangGraph extension are used to build AI agents for customer support, research, coding, and analysis. OpenAI's Assistants API, Anthropic's tool use, and Google's function calling all implement the same pattern. Autogen (Microsoft), CrewAI, and LlamaIndex Agents are alternative frameworks. Production deployments use LangSmith (LangChain) or Phoenix (Arize) for tracing and evaluation. Every modern agentic AI product uses one of these patterns.",
+    "key_takeaways": [
+      "LCEL makes chains composable with uniform invoke, batch, stream, and async.",
+      "Agents use LLMs to decide which tools to call at each step.",
+      "Streaming is automatic with LCEL — needed for good UX.",
+      "Agent design requires guardrails, observability, and fallbacks.",
+      "Use agents for open-ended tasks; use chains for known workflows."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "LCEL stands for LangChain ___ Language.",
+      "options": ["Expression", "Execution", "Extension"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "An agent is working on a task. At each step, what does it do?",
+      "choices": [
+        "Runs the same fixed chain",
+        "Decides whether to call a tool or finish",
+        "Trains the model"
+      ],
+      "correct_index": 1,
+      "reveal": "Agents decide at each step: call a tool (and which one) or produce a final answer. The decision is made by the LLM based on the task and history."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why must every agent have a max-iterations guard?",
+      "choices": [
+        "To make it faster",
+        "To prevent infinite loops that burn tokens and time",
+        "To enable streaming"
+      ],
+      "correct_index": 1,
+      "reveal": "Without a max-step guard, agents can loop indefinitely, calling tools repeatedly. Every iteration costs tokens and time. The guard is a critical safety mechanism."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Agent tool definitions\ntools = {\n    \"t1\": lambda x: search(x),\n    \"t2\": lambda x: calc(x),\n    \"t3\": lambda x: fetch(x),\n}\n\n# The model must choose tools by name\ndecision = agent.decide(task, available_tools=list(tools.keys()))",
+      "wrong_line": 2,
+      "explanation": "Tool names should be descriptive (e.g., 'search', 'calculator', 'fetch_url'). Names like 't1', 't2', 't3' give the model no information about what each tool does, so it will choose poorly. Rename the tools with clear, self-explanatory names."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain one design principle for building production agents.",
+      "rubric": "Should mention one of: guardrails (max iterations, timeouts), observability (logging/tracing every decision), well-designed tools (clear names/descriptions), or fallback paths (graceful degradation).",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "LCEL components are Runnables that support invoke, batch, stream, and their ___ variants.",
+      "options": ["async", "sync", "parallel"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which is a better fit for an agent than a fixed chain?",
+      "choices": [
+        "Classify every incoming email by sentiment",
+        "Answer open-ended research questions that require multiple searches and calculations",
+        "Always translate English to French"
+      ],
+      "correct_index": 1,
+      "reveal": "Open-ended tasks that require dynamic decisions (search, calculate, fetch) are ideal for agents. Fixed workflows are better served by chains."
+    },
+    {
+      "type": "predict",
+      "question": "Why does streaming matter for LLM apps?",
+      "choices": [
+        "It reduces cost",
+        "It shows output as it is generated, improving perceived responsiveness",
+        "It uses less memory"
+      ],
+      "correct_index": 1,
+      "reveal": "Streaming yields tokens as they are generated. Users see text appearing immediately rather than waiting for the full response."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Define tools with clear names and descriptions",
+        "Configure the agent with a max-iteration guardrail",
+        "Run the agent loop: decide, act, observe",
+        "Log every decision and tool call for observability",
+        "Handle tool failures with fallback paths"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why tool names matter when designing an agent.",
+      "rubric": "Should mention that the model chooses tools based on their names and descriptions, so vague names cause wrong selection. Clear, descriptive names help the model pick the right tool.",
+      "min_words": 20
+    }
+  ]
+}

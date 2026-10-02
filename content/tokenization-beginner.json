@@ -1,0 +1,141 @@
+{
+  "concept_slug": "tokenization",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Tokenization: How AI Reads Text",
+    "summary": "Before a language model can process text, it splits it into small pieces called tokens. Understanding tokens is understanding how AI actually sees words.",
+    "learning_goals": [
+      "Understand what a token is",
+      "See how text is broken into tokens",
+      "Understand why tokenization matters for AI",
+      "Read a simple tokenizer in Python"
+    ],
+    "long_intro": "You type a sentence. The AI reads it — but not the way you read it. Before any language model sees your text, it breaks it into small pieces called tokens. A token is not always a word; sometimes it is part of a word, or punctuation, or whitespace. Understanding tokenization is understanding what the model actually receives as input. It also explains why AI sometimes fails at simple tasks like counting letters, and why API costs are measured in tokens rather than words.",
+    "deep_explanation": [
+      {
+        "heading": "What a token is",
+        "body": "A token is a small piece of text — usually a word, part of a word, or a single character. 'Hello, world!' might be split into 'Hello', ',', ' world', '!'. Longer or rarer words get split into smaller pieces. 'Unbelievable' might become 'Un', 'believ', 'able'. The model never sees raw characters or whole sentences — it sees tokens. Every model has a fixed vocabulary of tokens (often 50,000 to 200,000), and any input text is broken into a sequence of these tokens.",
+        "code": "# A rough illustration of what tokenization looks like\ntext = \"Hello, world!\"\n# Common tokenizations (simplified):\n# [\"Hello\", \",\", \" world\", \"!\"]\n\ntext2 = \"Unbelievable!\"\n# Might become:\n# [\"Un\", \"believ\", \"able\", \"!\"]\n\nprint(\"The model sees tokens, not characters or words.\")"
+      },
+      {
+        "heading": "Why not just use words?",
+        "body": "You might think the simplest tokenization is to split on whitespace. It is not. Problems: (1) languages like Chinese do not use spaces. (2) New words and technical terms do not appear in a fixed vocabulary. (3) Rare words would be enormous if stored as single tokens. (4) Names, numbers, and URLs are unpredictable. The solution is subword tokenization: common words stay whole, rare words get split into pieces the model has seen before. This is what modern tokenizers (BPE, WordPiece, SentencePiece) do.",
+        "code": "# Why subword tokenization matters\ncommon_words = [\"the\", \"cat\", \"run\", \"hello\"]\nrare_words = [\"antidisestablishmentarianism\", \"GPT-4o\", \"0xDEADBEEF\"]\n\nprint(\"Common words: 1 token each\")\nfor w in common_words:\n    print(f\"  '{w}' → 1 token\")\n\nprint(\"Rare words: split into subword pieces\")\nfor w in rare_words:\n    print(f\"  '{w}' → multiple tokens\")"
+      },
+      {
+        "heading": "Why tokens matter",
+        "body": "Three reasons. First, cost: OpenAI, Anthropic, and Groq charge per token, not per word. A 1000-word email is usually about 1300 tokens. Second, context windows: every model has a maximum number of tokens it can process at once (often 8K to 200K). Longer inputs must be truncated or summarised. Third, quirks: since models see tokens not letters, tasks like 'count the letters in strawberry' fail — because the model sees tokens like 'straw' and 'berry', not the letters s-t-r-a-w-b-e-r-r-y.",
+        "code": "# Rule of thumb: 1 token ≈ 0.75 words in English\nwords = 1000\ntokens_approx = int(words * 1.3)\nprint(f\"{words} words ≈ {tokens_approx} tokens\")\n\n# Cost example at OpenAI pricing ($0.50 / 1M input tokens)\nprice_per_million = 0.50\ncost = tokens_approx / 1_000_000 * price_per_million\nprint(f\"Input cost: ${cost:.6f}\")"
+      }
+    ],
+    "formal_definition": "Tokenization is the process of converting a string of text into a sequence of discrete tokens from a fixed vocabulary. Modern tokenizers use subword algorithms such as Byte-Pair Encoding (BPE), WordPiece, or SentencePiece, which balance vocabulary size against coverage: common sequences are single tokens, rare sequences are split into known pieces. The sequence of token IDs is what a language model actually processes.",
+    "code_example": {
+      "language": "python",
+      "code": "# A very simple character-level tokenizer\nclass SimpleTokenizer:\n    def __init__(self, text):\n        chars = sorted(set(text))\n        self.vocab = {c: i for i, c in enumerate(chars)}\n        self.inv_vocab = {i: c for c, i in self.vocab.items()}\n\n    def encode(self, text):\n        return [self.vocab[c] for c in text]\n\n    def decode(self, ids):\n        return ''.join(self.inv_vocab[i] for i in ids)\n\ntok = SimpleTokenizer(\"hello world\")\nprint(\"vocab size:\", len(tok.vocab))\n\nids = tok.encode(\"hello\")\nprint(\"hello →\", ids)\nprint(\"decoded:\", tok.decode(ids))",
+      "universal_explanation": "This character-level tokenizer maps every unique character to an integer and back. Real tokenizers use subword pieces rather than characters, but the idea is identical: text goes in, a sequence of integers comes out, and the model processes those integers."
+    },
+    "common_mistakes": [
+      "Assuming a token equals a word: this is roughly true for English but not for other languages, code, or mathematical notation.",
+      "Ignoring token limits: if your input exceeds the model's context window, it will be silently truncated or rejected.",
+      "Forgetting that different models use different tokenizers: a token count from GPT-4 does not apply to Claude, which has its own tokenizer.",
+      "Being surprised when models miscount letters: the model sees tokens, not characters, so 'strawberry' is not visible as a sequence of 10 letters."
+    ],
+    "real_world_usage": "Every API call to OpenAI, Anthropic, or any LLM provider is metered in tokens. ChatGPT's context limits ('GPT-4 has a 128K token context window') refer to tokens, not words. Tokenizers are trained before the model and frozen — retraining the tokenizer invalidates the model. When you read that fine-tuning a model costs $X, the pricing is per million tokens. Understanding tokens is understanding how LLM costs, limits, and quirks are all defined.",
+    "key_takeaways": [
+      "A token is a small piece of text — often a word, subword, or punctuation.",
+      "Models see tokens, not characters or whole words.",
+      "Modern tokenizers use subword algorithms (BPE, WordPiece, SentencePiece).",
+      "Costs, context windows, and API limits are all measured in tokens.",
+      "Different models use different tokenizers."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "A token is a small piece of text — often a word, part of a word, or ___.",
+      "options": ["punctuation", "number", "colour"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Which word will be split into MULTIPLE tokens by most modern tokenizers?",
+      "choices": ["cat", "run", "antidisestablishmentarianism"],
+      "correct_index": 2,
+      "reveal": "Rare or very long words get split into subword pieces. Common short words like 'cat' and 'run' are single tokens."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You send a 2000-word document to a model with a 1500-token context window. What happens?",
+      "choices": [
+        "The model processes the entire document anyway",
+        "The document exceeds the limit and will be truncated or rejected",
+        "The model automatically compresses the text"
+      ],
+      "correct_index": 1,
+      "reveal": "2000 words ≈ 2600 tokens, well above 1500. The API will either truncate the input or return an error. You would need to summarise or split the document."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Estimating tokens for an API call\ntext = \"Hello, how are you today?\"\nword_count = len(text.split())\ntoken_estimate = word_count      # assume 1 token = 1 word\nprint(f\"Estimated tokens: {token_estimate}\")",
+      "wrong_line": 4,
+      "explanation": "Assuming 1 word = 1 token is wrong. In English, the rule of thumb is about 1 token ≈ 0.75 words, meaning most text has MORE tokens than words. The estimate should be roughly word_count * 1.3. The current code will undershoot the real cost."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what a token is and why modern tokenizers use subwords instead of whole words.",
+      "rubric": "Should mention that a token is a small text piece and that subword tokenization handles rare words, unknown terms, and non-space-separated languages by reusing common pieces.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Modern tokenizers use subword algorithms like Byte-Pair Encoding (BPE) or ___.",
+      "options": ["WordPiece", "WordCount", "LetterSplit"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which is more, 100 words or 100 tokens?",
+      "choices": [
+        "100 words because words are longer",
+        "100 tokens because the token-to-word ratio is > 1 for English",
+        "They are always equal"
+      ],
+      "correct_index": 1,
+      "reveal": "In English, 1 word typically maps to about 1.3 tokens. So 100 words is approximately 130 tokens."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "# Counting tokens incorrectly\ndef count_tokens(text):\n    # Split on whitespace\n    return len(text.split())\n\ntext = \"Hello! How are you?\"\nprint(count_tokens(text))",
+      "wrong_line": 4,
+      "explanation": "Splitting on whitespace is not the same as tokenization. This returns the word count, not the token count. The correct number would be higher because punctuation is often its own token, and subword splits add more. Use a real tokenizer (tiktoken for OpenAI, or the model-specific tokenizer) for accurate counts."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Receive input text from the user",
+        "Apply the tokenizer to split text into tokens",
+        "Map each token to its vocabulary ID",
+        "Feed the sequence of IDs into the model",
+        "Model processes the token sequence"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why LLM APIs charge per token rather than per word.",
+      "rubric": "Should mention that the model processes tokens, not words, and that tokens are the fundamental unit of computation. Different languages and content types have different token-to-word ratios, so pricing on tokens is more accurate than pricing on words.",
+      "min_words": 20
+    }
+  ]
+}

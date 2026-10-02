@@ -1,0 +1,157 @@
+{
+  "concept_slug": "using-embeddings-in-rag",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "RAG in Production: Chunking, Reranking, and Evaluation",
+    "summary": "Real RAG systems go beyond naive retrieve-then-generate. Chunking strategy, reranking, hybrid search, and evaluation make the difference between demo and product.",
+    "learning_goals": [
+      "Understand chunking strategies and their trade-offs",
+      "Read reranking and hybrid search patterns",
+      "Understand evaluation metrics for RAG",
+      "Design a production-grade RAG pipeline"
+    ],
+    "long_intro": "A simple RAG pipeline retrieves the top-K documents by cosine similarity and passes them to the LLM. In production, this is rarely enough. Documents must be chunked carefully (too large and the context is diluted; too small and meaning is lost). Retrieved results should be reranked by a more accurate but slower model. Hybrid search often outperforms pure vector search. And the whole pipeline must be evaluated — because 'the answers look good' is not a metric. This lesson covers the practical considerations that turn a RAG demo into a RAG product.",
+    "deep_explanation": [
+      {
+        "heading": "Chunking strategies",
+        "body": "Long documents cannot be embedded as a whole — the embedding would average over too much. Instead, split documents into chunks (200-1000 tokens), embed each, and retrieve the most relevant chunks. Chunking choices matter: fixed-size chunks are simple but can split mid-sentence. Sentence-aware chunking keeps sentences intact. Recursive chunking tries larger chunks first, splitting only if needed. Overlap between chunks (10-20%) preserves context across boundaries. For structured documents (code, contracts), chunking by section or function often works best.",
+        "code": "# Chunking strategies (conceptual)\ndef fixed_chunks(text, size=500):\n    return [text[i:i+size] for i in range(0, len(text), size)]\n\ndef sentence_chunks(text):\n    sentences = text.split(\". \")\n    chunks = []\n    current = \"\"\n    for s in sentences:\n        if len(current) + len(s) < 500:\n            current += s + \". \"\n        else:\n            chunks.append(current.strip())\n            current = s + \". \"\n    if current:\n        chunks.append(current.strip())\n    return chunks\n\ntext = \"First sentence. Second sentence. Third sentence. \" * 20\nprint(f\"Fixed: {len(fixed_chunks(text))} chunks\")\nprint(f\"Sentences: {len(sentence_chunks(text))} chunks\")"
+      },
+      {
+        "heading": "Reranking",
+        "body": "Vector search is fast but approximate. A reranker is a slower but more accurate model that takes the top-K retrieved documents (say, top 50) and re-scores them (say, to top 5) using more computation. Cross-encoders (like Cohere Rerank, BGE Reranker) score each (query, document) pair jointly — much more accurate than embedding-based similarity. The two-stage pattern — retrieve with embeddings, rerank with a cross-encoder — is standard in production RAG.",
+        "code": "# Reranking pattern\n# Stage 1: retrieve top-50 by vector similarity\n# Stage 2: rerank top-50 by cross-encoder score\n# Stage 3: return top-5 to LLM\n\ndef retrieve(query_emb, doc_embs, k=50):\n    # Fast vector search\n    return [\"doc1\", \"doc2\", \"doc3\"]   # placeholder\n\ndef rerank(query, candidates, k=5):\n    # Accurate cross-encoder scoring\n    # In production: call Cohere Rerank or BGE Reranker\n    return candidates[:k]\n\ncandidates = retrieve([0.9, 0.1], [])\ntop_docs = rerank(\"query\", candidates, k=3)\nprint(\"Final docs:\", top_docs)"
+      },
+      {
+        "heading": "Hybrid search in RAG",
+        "body": "Pure vector search misses exact terms (product codes, names, technical jargon). Pure keyword search misses paraphrases. Hybrid search runs both and fuses the results. For RAG, hybrid often gives the biggest single improvement. Every production RAG system uses it or should. Fusing the two ranked lists (typically with Reciprocal Rank Fusion or a weighted sum) gives the best of both worlds.",
+        "code": "# Hybrid retrieval for RAG\ndef hybrid_retrieve(query, query_emb, vector_db, bm25_index, k=10):\n    # Vector search\n    vector_results = vector_db.search(query_emb, k=k)\n    \n    # Keyword search\n    keyword_results = bm25_index.search(query, k=k)\n    \n    # Fuse with RRF\n    from collections import defaultdict\n    scores = defaultdict(float)\n    for ranks in [vector_results, keyword_results]:\n        for rank, doc_id in enumerate(ranks):\n            scores[doc_id] += 1 / (60 + rank + 1)\n    \n    return sorted(scores.items(), key=lambda x: -x[1])[:k]\n\nprint(\"Hybrid: vector + keyword, fused by RRF\")"
+      },
+      {
+        "heading": "Evaluating RAG",
+        "body": "You cannot improve what you do not measure. RAG evaluation splits into two parts: retrieval quality and generation quality. Retrieval metrics: recall@k (did the relevant document appear in the top-k?), MRR (mean reciprocal rank of the first relevant result), nDCG. Generation metrics: faithfulness (is the answer grounded in retrieved docs?), answer relevance, and correctness against reference answers. Tools like RAGAS provide automated evaluation using an LLM-as-judge. Production RAG systems iterate on these metrics, not vibes.",
+        "code": "# Retrieval evaluation metrics\ndef recall_at_k(retrieved, relevant, k):\n    top_k = set(retrieved[:k])\n    return len(top_k & set(relevant)) / len(relevant)\n\ndef mrr(retrieved, relevant):\n    for rank, doc in enumerate(retrieved, 1):\n        if doc in relevant:\n            return 1 / rank\n    return 0\n\nretrieved = [\"d3\", \"d1\", \"d4\", \"d2\", \"d5\"]\nrelevant = [\"d1\", \"d4\"]\n\nprint(f\"Recall@3: {recall_at_k(retrieved, relevant, 3):.2f}\")\nprint(f\"MRR:      {mrr(retrieved, relevant):.2f}\")"
+      }
+    ],
+    "formal_definition": "Production RAG combines: (1) hierarchical or sentence-aware chunking with overlap; (2) hybrid retrieval fusing vector similarity with BM25 via rank fusion; (3) two-stage retrieval + reranking with a cross-encoder; (4) prompt construction that grounds generation in retrieved context; (5) evaluation of retrieval (recall@k, MRR, nDCG) and generation (faithfulness, answer relevance). Common embedding models: text-embedding-3, voyage-3, bge-large. Common rerankers: Cohere Rerank, bge-reranker, ColBERT.",
+    "code_example": {
+      "language": "python",
+      "code": "# Full production RAG pipeline (skeleton)\nclass ProductionRAG:\n    def __init__(self, embed_model, vector_db, bm25, reranker, llm):\n        self.embed = embed_model\n        self.vector_db = vector_db\n        self.bm25 = bm25\n        self.rerank = reranker\n        self.llm = llm\n\n    def answer(self, query, k_retrieve=50, k_final=5):\n        # 1. Hybrid retrieval\n        q_emb = self.embed(query)\n        vec_results = self.vector_db.search(q_emb, k=k_retrieve)\n        kw_results = self.bm25.search(query, k=k_retrieve)\n        \n        # 2. Fuse with RRF\n        from collections import defaultdict\n        scores = defaultdict(float)\n        for ranks in [vec_results, kw_results]:\n            for rank, doc_id in enumerate(ranks):\n                scores[doc_id] += 1 / (60 + rank + 1)\n        candidates = [d for d, _ in sorted(scores.items(), key=lambda x: -x[1])][:k_retrieve]\n        \n        # 3. Rerank with cross-encoder\n        top_docs = self.rerank(query, candidates, k=k_final)\n        \n        # 4. Build prompt with context\n        context = \"\\n\\n\".join(d.text for d in top_docs)\n        prompt = f\"\"\"Answer using only the context below. If the answer\nis not in the context, say so.\n\nContext:\n{context}\n\nQuestion: {query}\nAnswer:\"\"\"\n        \n        # 5. Generate\n        return self.llm.generate(prompt)",
+      "universal_explanation": "This skeleton combines everything: hybrid retrieval, rank fusion, cross-encoder reranking, and grounded prompting. Each step adds latency but improves quality. Production systems tune the trade-off between speed and accuracy for their specific use case."
+    },
+    "common_mistakes": [
+      "Chunking arbitrarily: chunk size affects retrieval quality. Experiment with 200-1000 token chunks and adjust based on evaluation metrics.",
+      "Skipping reranking: the extra stage is a small latency cost for a large quality gain. It is almost always worth it.",
+      "Not evaluating retrieval independently from generation: if retrieval fails, generation cannot recover. Measure both.",
+      "Ignoring hybrid search: pure vector search misses exact terms. Combine it with keyword search, especially for technical content."
+    ],
+    "real_world_usage": "Every enterprise RAG system (Glean, Notion AI, Harvey, Vectara, LlamaIndex) uses hybrid retrieval, reranking, and evaluation. Anthropic's Claude and OpenAI's ChatGPT with retrieval use the same two-stage architecture. Chunking strategies vary by domain — legal documents use section-aware chunking, code uses AST-aware chunking, medical records use problem-oriented chunking. Evaluation frameworks (RAGAS, TruLens, DeepEval) are standard in production deployments.",
+    "key_takeaways": [
+      "Chunking strategy affects retrieval quality — test different sizes and boundaries.",
+      "Two-stage retrieval: fast vector search, then accurate cross-encoder reranking.",
+      "Hybrid search (vector + keyword) outperforms either alone.",
+      "RAG evaluation must measure retrieval and generation separately.",
+      "Production RAG combines chunking, hybrid retrieval, reranking, and evaluation."
+    ],
+    "estimated_minutes": 13
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Chunks often overlap by 10-20% to preserve ___ across boundaries.",
+      "options": ["context", "length", "speed"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why is a cross-encoder reranker more accurate than embedding similarity?",
+      "choices": [
+        "It runs faster",
+        "It scores the (query, document) pair jointly instead of comparing independent embeddings",
+        "It uses larger embeddings"
+      ],
+      "correct_index": 1,
+      "reveal": "Cross-encoders process the query and document together, so they can capture fine-grained interactions that independent embedding comparison misses."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Which metric measures whether the relevant document appears in the top-K retrieved results?",
+      "choices": [
+        "Answer relevance",
+        "Recall@k",
+        "Faithfulness"
+      ],
+      "correct_index": 1,
+      "reveal": "Recall@k measures retrieval quality — what fraction of relevant documents appeared in the top-K. Faithfulness and answer relevance measure generation quality."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Naive RAG\nchunks = chunk_fixed(document, size=2000)\nquery_emb = embed(query)\ntop_chunk = max(chunks, key=lambda c: cosine(query_emb, embed(c)))\nprompt = f\"Context: {top_chunk}\\n\\nQuestion: {query}\"\nanswer = llm.generate(prompt)",
+      "wrong_line": 2,
+      "explanation": "Chunks of 2000 tokens are too large for embedding — the embedding averages over too much text and loses specificity. Chunks of 200-500 tokens are standard. Also, retrieving only the single top chunk is too narrow; retrieving top-5 and letting the LLM see multiple chunks usually works better."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why production RAG uses two-stage retrieval (fast retrieval + slow reranking).",
+      "rubric": "Should mention that embedding-based search is fast but approximate, so it retrieves many candidates. A cross-encoder reranker is slower but more accurate, so it re-scores the candidates. Combining both gives speed and quality.",
+      "min_words": 30
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Two-stage retrieval typically uses a cross-encoder as the second stage; the first stage is usually ___ retrieval.",
+      "options": ["embedding-based", "keyword-only", "random"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which chunking strategy is best for a document with clear paragraphs?",
+      "choices": [
+        "Fixed-size chunks regardless of content",
+        "Recursive or paragraph-aware chunking that respects structure",
+        "Single chunk for the whole document"
+      ],
+      "correct_index": 1,
+      "reveal": "Respecting natural boundaries (paragraphs, sections) preserves meaning better than arbitrary splits."
+    },
+    {
+      "type": "predict",
+      "question": "In hybrid retrieval, why do we combine vector and keyword results with RRF instead of averaging the scores?",
+      "choices": [
+        "Averaging is slower",
+        "Vector and keyword scores are on different scales, so rank-based fusion is more robust",
+        "RRF uses fewer documents"
+      ],
+      "correct_index": 1,
+      "reveal": "Cosine similarity and BM25 scores have different ranges and distributions. Rank-based fusion (RRF) avoids the calibration problem by working on ranks instead of raw scores."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Chunk documents with appropriate size and overlap",
+        "Embed all chunks and index them in a vector database",
+        "At query time, embed the query and retrieve top-K via hybrid search",
+        "Rerank retrieved candidates with a cross-encoder",
+        "Insert top reranked chunks into the prompt and call the LLM",
+        "Evaluate retrieval and generation metrics, iterate on failures"
+      ],
+      "correct_order": [0, 1, 2, 3, 4, 5]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why evaluation is essential in production RAG.",
+      "rubric": "Should mention that without measuring retrieval quality (recall@k, MRR) and generation quality (faithfulness), you cannot tell whether changes improve the system or not. Evaluation guides iteration.",
+      "min_words": 25
+    }
+  ]
+}

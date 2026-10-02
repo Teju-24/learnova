@@ -1,0 +1,160 @@
+{
+  "concept_slug": "gradient-descent",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Gradient Descent: SGD, Momentum, and Adam",
+    "summary": "Vanilla gradient descent has limitations. Stochastic gradient descent, momentum, and Adam solve them and power every modern AI model.",
+    "learning_goals": [
+      "Understand stochastic gradient descent (SGD) and why it's used",
+      "See how momentum accelerates convergence",
+      "Understand Adam as the default optimizer for modern AI",
+      "Read a real PyTorch training loop"
+    ],
+    "long_intro": "Vanilla gradient descent computes the exact gradient of the loss over the entire dataset, then takes one step. On a dataset with millions of examples, this is impossibly slow. Stochastic gradient descent (SGD) fixes this by computing gradients on small random batches — noisy but fast. Momentum accelerates SGD by remembering the previous step and adding a fraction of it to the current one, so the optimizer builds up speed in consistent directions. Adam combines momentum with per-parameter adaptive learning rates and has become the default optimizer for nearly all modern deep learning. This lesson walks through all three.",
+    "deep_explanation": [
+      {
+        "heading": "Stochastic gradient descent",
+        "body": "Standard gradient descent computes the gradient over the whole dataset — one step per epoch. Stochastic gradient descent (SGD) computes it on a small random batch, say 32 or 256 examples, and takes many more steps per epoch. The gradient from a batch is a noisy estimate of the true gradient, but each step is much cheaper. In practice, this noise is a feature: it helps the optimizer escape shallow local minima and find flatter, more generalisable solutions. Almost every real training loop is a form of SGD.",
+        "code": "# SGD: iterate over mini-batches\n# For each batch:\n#   grad = average gradient over the batch\n#   params = params - lr * grad\n\nimport random\ndataset = list(range(1000))\n\nfor epoch in range(5):\n    random.shuffle(dataset)\n    batch_size = 32\n    for i in range(0, len(dataset), batch_size):\n        batch = dataset[i:i+batch_size]\n        # grad = compute_gradient(batch)\n        # params = params - lr * grad\n        pass\n    print(f\"epoch {epoch} done\")"
+      },
+      {
+        "heading": "Momentum: building up speed",
+        "body": "Vanilla SGD can zig-zag in steep valleys and slow down on flat plateaus. Momentum fixes this by keeping a running average of past gradients and using that average for the update. If gradients consistently point in the same direction, momentum accumulates and the optimizer moves faster. If they oscillate, the average cancels out and the optimizer moves less. This is like giving a ball rolling downhill mass — it keeps going through small bumps.",
+        "code": "# Momentum update\n# v = beta * v + grad\n# params = params - lr * v\n\nv = 0.0\nbeta = 0.9   # how much of the previous step to keep\nlr = 0.1\nx = 5.0\n\nfor step in range(20):\n    grad = 2 * x\n    v = beta * v + grad\n    x = x - lr * v\n\nprint(round(x, 4))   # converges faster than vanilla SGD"
+      },
+      {
+        "heading": "Adam: momentum + adaptive learning rates",
+        "body": "Adam (Adaptive Moment Estimation) combines momentum with a second idea: each parameter gets its own effective learning rate based on how noisy its gradients have been. Parameters with consistently large gradients get smaller steps; parameters with small gradients get larger steps. This makes Adam robust to hyperparameter choices — it usually works well with default learning rate 0.001 without tuning. Since its introduction in 2014, Adam has become the default optimizer for almost every deep learning model.",
+        "code": "# Adam (simplified)\n# m = beta1 * m + (1-beta1) * grad\n# v = beta2 * v + (1-beta2) * grad^2\n# params = params - lr * m / (sqrt(v) + eps)\n\nbeta1 = 0.9\nbeta2 = 0.999\neps = 1e-8\nlr = 0.001\n\nx = 5.0\nm = 0.0\nv = 0.0\n\nfor step in range(100):\n    grad = 2 * x\n    m = beta1 * m + (1 - beta1) * grad\n    v = beta2 * v + (1 - beta2) * grad ** 2\n    x = x - lr * m / (v ** 0.5 + eps)\n\nprint(round(x, 6))   # converges to 0"
+      },
+      {
+        "heading": "Reading a real training loop",
+        "body": "Here is a minimal PyTorch training loop, annotated. Everything you have learned shows up here: a forward pass to compute predictions, a loss computation, a backward pass to compute gradients, and an optimizer step. The optimizer is AdamW — a variant of Adam. Learning rate is 1e-3. Batch size is 32. This exact pattern appears in every modern AI codebase with minor variations.",
+        "code": "# import torch\n# import torch.nn as nn\n# import torch.optim as optim\n#\n# model = MyNetwork()\n# optimizer = optim.AdamW(model.parameters(), lr=1e-3)\n# loss_fn = nn.CrossEntropyLoss()\n#\n# for epoch in range(num_epochs):\n#     for batch_x, batch_y in dataloader:\n#         optimizer.zero_grad()               # clear old gradients\n#         predictions = model(batch_x)        # forward pass\n#         loss = loss_fn(predictions, batch_y)  # loss\n#         loss.backward()                     # compute gradients\n#         optimizer.step()                    # update parameters\n#\n# print('training done')"
+      }
+    ],
+    "formal_definition": "Stochastic gradient descent (SGD) approximates the true gradient ∇L(θ) with the gradient over a mini-batch: ∇L_B(θ) = (1/|B|) Σ_{i∈B} ∇ℓ(θ; x_i, y_i). Momentum maintains a velocity v_t = β v_{t-1} + ∇L(θ_t) and updates θ_{t+1} = θ_t - η v_t. Adam maintains first and second moment estimates m_t and v_t of the gradient, then updates θ_{t+1} = θ_t - η m_t / (√v_t + ε). Adam combines momentum with per-parameter adaptive learning rates.",
+    "code_example": {
+      "language": "python",
+      "code": "# Compare vanilla SGD vs momentum vs Adam on the same problem\n\ndef optimize(step_fn, steps=30):\n    x = 5.0\n    for step in range(steps):\n        x = step_fn(x)\n    return x\n\nlr = 0.1\n\n# Vanilla SGD\nx = 5.0\nfor _ in range(30):\n    x = x - lr * 2 * x\nvanilla = x\n\n# Momentum\nx = 5.0\nv = 0.0\nfor _ in range(30):\n    v = 0.9 * v + 2 * x\n    x = x - lr * v\nmomentum = x\n\nprint(\"vanilla SGD:\", round(vanilla, 4))\nprint(\"momentum:  \", round(momentum, 4))",
+      "universal_explanation": "Both optimizers reach near zero on the same simple problem. Momentum gets there faster and with less oscillation. On harder problems with noisy gradients, the difference between optimizers becomes more dramatic, which is why modern deep learning uses Adam by default."
+    },
+    "common_mistakes": [
+      "Using full-batch gradient descent on large datasets: it computes the gradient over the entire training set, which is 1000x slower than SGD on the same data.",
+      "Forgetting to zero gradients between steps: in PyTorch, gradients accumulate by default. Forgetting optimizer.zero_grad() causes the optimizer to use stale gradients.",
+      "Setting beta values incorrectly in momentum or Adam: the defaults (0.9 for momentum, 0.999 for Adam's second moment) work well for most problems.",
+      "Thinking Adam is always best: for some problems (notably small datasets and certain image models), well-tuned SGD with momentum still wins. Adam is the default, not the universal answer."
+    ],
+    "real_world_usage": "GPT-4, Claude, Gemini, Llama — all trained with AdamW (a variant of Adam). Stable Diffusion, ViT, ResNet — same. When you fine-tune any model, you almost always use AdamW with learning rate 1e-5 to 1e-3. Reading a paper or tutorial that says 'we trained with Adam lr=1e-4, batch size=32, 100 epochs' tells you exactly what optimizer, learning rate, and training schedule they used. The optimizer choice is one of the most important training decisions.",
+    "key_takeaways": [
+      "SGD computes gradients on small random batches instead of the whole dataset.",
+      "Momentum accumulates past gradients to build up speed in consistent directions.",
+      "Adam combines momentum with adaptive per-parameter learning rates.",
+      "AdamW is the default optimizer for nearly all modern deep learning.",
+      "Every PyTorch training loop follows the same pattern: zero_grad, forward, loss, backward, step."
+    ],
+    "estimated_minutes": 11
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "SGD computes gradients on small random ___ instead of the entire dataset.",
+      "options": ["batches", "columns", "models"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Implement gradient descent with momentum on the function f(x) = x^2. Start at x = 5.0. Use learning rate 0.1 and momentum coefficient 0.9. Run for 20 steps and print x each iteration. The final x should be very close to 0.",
+      "starter_code": "x = 5.0\nlearning_rate = 0.1\nmomentum = 0.9\nv = 0.0\n\n# Write a loop that runs 20 steps\n# Each step:\n#   gradient = 2 * x\n#   v = momentum * v + gradient\n#   x = x - learning_rate * v\n#   print(x)\n",
+      "reference_code": "x = 5.0\nlearning_rate = 0.1\nmomentum = 0.9\nv = 0.0\n\nfor step in range(20):\n    gradient = 2 * x\n    v = momentum * v + gradient\n    x = x - learning_rate * v\n    print(x)",
+      "rubric": "The loop should compute the gradient of x^2 (2*x), update the velocity v using momentum, then update x using the velocity. Final x should be close to 0.",
+      "language": "python",
+      "min_lines": 6
+    }},
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If gradients consistently point in the same direction, what does momentum do?",
+      "choices": [
+        "Slows the optimizer down",
+        "Accumulates them, making the optimizer move faster in that direction",
+        "Has no effect"
+      ],
+      "correct_index": 1,
+      "reveal": "Momentum builds up speed when gradients are consistent. This is why it accelerates convergence in steep valleys."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "In a PyTorch training loop, why is optimizer.zero_grad() needed?",
+      "choices": [
+        "It is optional and can be skipped",
+        "It clears accumulated gradients from the previous step so the current step uses only fresh gradients",
+        "It resets the model to its initial state"
+      ],
+      "correct_index": 1,
+      "reveal": "Gradients accumulate by default in PyTorch. Without zero_grad(), the current step would use stale gradients mixed with new ones, producing incorrect updates."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Training loop\nfor batch_x, batch_y in dataloader:\n    optimizer.zero_grad()\n    predictions = model(batch_x)\n    loss = loss_fn(predictions, batch_y)\n    optimizer.step()\n    loss.backward()",
+      "wrong_line": 6,
+      "explanation": "The order is wrong. loss.backward() must run BEFORE optimizer.step(). backward() computes the gradients; step() uses them to update parameters. In the current code, step() runs with gradients from the previous iteration, and the current gradients are never applied. Swap the last two lines."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why Adam has become the default optimizer for modern deep learning.",
+      "rubric": "Should mention that Adam combines momentum with adaptive per-parameter learning rates, making it robust to hyperparameter choices and usually working well with default settings.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Adam combines momentum with per-parameter ___ learning rates.",
+      "options": ["adaptive", "fixed", "random"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Why is SGD faster than full-batch gradient descent on large datasets?",
+      "choices": [
+        "It takes bigger steps",
+        "It computes gradients on small batches, so each step is cheaper",
+        "It uses a larger learning rate"
+      ],
+      "correct_index": 1,
+      "reveal": "Full-batch computes the gradient over the entire dataset per step. SGD uses a small random batch, so each step is much cheaper and there are many more steps per epoch."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "# PyTorch training step\nfor batch_x, batch_y in dataloader:\n    optimizer.zero_grad()\n    preds = model(batch_x)\n    loss = loss_fn(preds, batch_y)\n    optimizer.step()\n    loss.backward()",
+      "wrong_line": 6,
+      "explanation": "The order is wrong. loss.backward() must come before optimizer.step(). backward() computes gradients; step() uses them. In the current order, step() uses the previous iteration's gradients."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Zero out any accumulated gradients",
+        "Run the model forward on a batch of inputs",
+        "Compute the loss between predictions and true labels",
+        "Run loss.backward() to compute gradients",
+        "Call optimizer.step() to update parameters"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain what momentum does to the optimizer's trajectory.",
+      "rubric": "Should mention that momentum accumulates a running average of gradients, allowing the optimizer to keep moving in consistent directions and accelerate through oscillations.",
+      "min_words": 20
+    }
+  ]
+}

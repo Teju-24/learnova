@@ -1,0 +1,150 @@
+{
+  "concept_slug": "evaluation",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Evaluation: How Do You Know It's Working?",
+    "summary": "Evaluation is how you measure whether an AI system actually works. Without it, you are guessing — and so are your improvements.",
+    "learning_goals": [
+      "Understand why evaluation matters",
+      "See the difference between accuracy and loss",
+      "Understand precision, recall, and F1",
+      "Read a simple evaluation in code"
+    ],
+    "long_intro": "You can build an impressive AI demo in an afternoon. But how do you know it actually works? Evaluation is the practice of measuring a model's performance objectively. Without evaluation, you cannot tell if a change helped or hurt, whether the model is ready for users, or where it fails. This lesson introduces the core evaluation metrics every AI practitioner needs to know: accuracy, precision, recall, F1, and the difference between evaluating a regression model and a classifier.",
+    "deep_explanation": [
+      {
+        "heading": "Why evaluation matters",
+        "body": "A model that looks good in a demo may fail in production. Without evaluation, you cannot tell the difference. Evaluation has three jobs: (1) measure current performance objectively; (2) compare two versions of a model to see which is better; (3) identify failure modes so you can fix them. Good evaluation is what separates an AI project that ships from one that stalls. It also protects against a common trap: tuning hyperparameters to look good on the training set without checking whether the model actually generalises.",
+        "code": "# Evaluation in one sentence:\n# measure performance on a held-out test set\n\nprint(\"Why evaluate?\")\nprint(\"  To know if the model works\")\nprint(\"  To compare model versions\")\nprint(\"  To find failure modes\")"
+      },
+      {
+        "heading": "Accuracy and its limits",
+        "body": "Accuracy is the fraction of predictions that were correct. It is simple but often misleading. If 95% of emails are not spam, a model that always says 'not spam' has 95% accuracy — but is useless. Accuracy alone hides what the model actually does. For imbalanced classes, you need more nuanced metrics: precision, recall, F1.",
+        "code": "# Accuracy has a trap\n# Suppose 100 emails, 95 are not spam, 5 are spam\n# A model that predicts 'not spam' for everything:\n\ntotal = 100\ncorrect = 95    # all the non-spam ones\naccuracy = correct / total\nprint(f\"accuracy: {accuracy:.2f}\")   # 0.95\n\n# But it catches ZERO spam. Accuracy alone is misleading."
+      },
+      {
+        "heading": "Precision and recall",
+        "body": "Precision is: of the items the model said were positive, how many actually were? Recall is: of the items that were actually positive, how many did the model catch? They trade off. High precision means few false positives; high recall means few false negatives. Which matters more depends on the task. In spam detection, you want high precision (do not block legitimate email). In cancer screening, you want high recall (do not miss any real cases).",
+        "code": "# Confusion matrix\ntp = 40   # true positives\nfp = 10   # false positives\nfn = 5    # false negatives\ntn = 45   # true negatives\n\nprecision = tp / (tp + fp)\nrecall    = tp / (tp + fn)\n\nprint(f\"precision: {precision:.2f}\")   # 0.80\nprint(f\"recall:    {recall:.2f}\")      # 0.89"
+      }
+    ],
+    "formal_definition": "Model evaluation uses a held-out test set to measure generalisation. For classification: accuracy = correct predictions / total; precision = TP / (TP + FP); recall = TP / (TP + FN); F1 = 2 * (precision * recall) / (precision + recall). For regression: MSE, MAE, R². Confusion matrices give per-class breakdowns. Cross-validation estimates variance in performance. Beyond accuracy, tasks require metrics aligned with business impact — a medical model optimises for recall; a spam filter for precision.",
+    "code_example": {
+      "language": "python",
+      "code": "def evaluate_classifier(predictions, labels):\n    tp = fp = fn = tn = 0\n    for p, y in zip(predictions, labels):\n        if p == 1 and y == 1: tp += 1\n        elif p == 1 and y == 0: fp += 1\n        elif p == 0 and y == 1: fn += 1\n        else: tn += 1\n    \n    accuracy = (tp + tn) / (tp + fp + fn + tn)\n    precision = tp / (tp + fp) if (tp + fp) else 0\n    recall = tp / (tp + fn) if (tp + fn) else 0\n    f1 = 2 * precision * recall / (precision + recall) if (precision + recall) else 0\n    \n    return {\n        \"accuracy\": round(accuracy, 3),\n        \"precision\": round(precision, 3),\n        \"recall\": round(recall, 3),\n        \"f1\": round(f1, 3),\n    }\n\npredictions = [1, 1, 0, 0, 1, 0, 1, 1, 0, 0]\nlabels      = [1, 0, 0, 0, 1, 0, 1, 0, 1, 0]\n\nprint(evaluate_classifier(predictions, labels))",
+      "universal_explanation": "The function computes the confusion matrix counts (true positives, false positives, false negatives, true negatives), then derives accuracy, precision, recall, and F1. Every classification evaluation, from medical diagnosis to spam filtering, uses these metrics."
+    },
+    "common_mistakes": [
+      "Reporting only accuracy: for imbalanced classes, accuracy is misleading. Always look at precision and recall.",
+      "Evaluating on the training set: this tells you nothing about generalisation. Use a held-out test set.",
+      "Tuning to the test set: repeatedly checking test performance and adjusting the model leaks information. Use a validation set for tuning and touch the test set once.",
+      "Using the wrong metric: high recall matters for cancer screening; high precision matters for spam filtering. Match the metric to the task."
+    ],
+    "real_world_usage": "Every production AI system uses evaluation: medical imaging models track sensitivity and specificity; recommender systems track precision@k and recall@k; search engines track nDCG and MRR; LLMs are evaluated on benchmarks (MMLU, HumanEval, GSM8K) and with LLM-as-judge frameworks. Every model release from OpenAI, Anthropic, and Google includes an evaluation report. Evaluation is what makes AI engineering a science rather than a guessing game.",
+    "key_takeaways": [
+      "Evaluation measures whether a model actually works.",
+      "Accuracy alone is misleading on imbalanced data.",
+      "Precision and recall balance different types of errors.",
+      "F1 combines precision and recall into a single number.",
+      "Every production AI system depends on evaluation."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Evaluation measures model performance on a held-out ___ set.",
+      "options": ["test", "training", "noise"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A model predicts 'not spam' for every email, and 95% of emails are not spam. What is its accuracy?",
+      "choices": [
+        "5%",
+        "95%",
+        "50%"
+      ],
+      "correct_index": 1,
+      "reveal": "It is correct on every non-spam email, giving 95% accuracy — but it catches no spam at all. This is why accuracy alone is misleading."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A medical screening test misses many real cancer cases. Which metric needs improvement?",
+      "choices": [
+        "Precision",
+        "Recall",
+        "Accuracy on negatives"
+      ],
+      "correct_index": 1,
+      "reveal": "Recall = TP / (TP + FN). Missing real cases means low recall. For medical screening, recall is the priority."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "def accuracy(predictions, labels):\n    correct = sum(1 for p, y in zip(predictions, labels) if p == y)\n    return correct / len(labels)\n\n# Imbalanced dataset: 990 non-spam, 10 spam\n# Model predicts all negative\nlabels      = [0] * 990 + [1] * 10\npredictions = [0] * 1000\nprint(f\"accuracy: {accuracy(predictions, labels):.2f}\")   # 0.99\nprint(\"Model is excellent!\")",
+      "wrong_line": 9,
+      "explanation": "The accuracy is 0.99, but the model has caught ZERO spam emails. Calling it 'excellent' based on accuracy alone is wrong. On imbalanced data, accuracy hides the fact that the model never predicts the minority class. Precision and recall would reveal this."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why accuracy alone is not enough to evaluate a classifier.",
+      "rubric": "Should mention that on imbalanced data, accuracy can be high even when the model never predicts the minority class. Precision and recall give a more complete picture.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Precision is TP / (TP + ___).",
+      "options": ["FP", "FN", "TN"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which task prioritises recall over precision?",
+      "choices": [
+        "Spam detection (do not block real email)",
+        "Cancer screening (do not miss real cases)",
+        "Both equally"
+      ],
+      "correct_index": 1,
+      "reveal": "For cancer screening, missing a real case (low recall) is costly. For spam, false positives are costly (low precision). The right metric depends on the task."
+    },
+    {
+      "type": "predict",
+      "question": "Why should you not tune hyperparameters on the test set?",
+      "choices": [
+        "It is illegal",
+        "It leaks information — you are effectively fitting to the test set, so the reported metric is optimistic",
+        "It takes too long"
+      ],
+      "correct_index": 1,
+      "reveal": "Tuning on the test set leaks information about the test distribution into the model. Use a validation set for tuning and touch the test set only once for the final report."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Split data into train, validation, and test sets",
+        "Train the model on the training set",
+        "Tune hyperparameters using the validation set",
+        "Evaluate the final model on the test set",
+        "Report the test metrics as the model's performance"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain the difference between precision and recall.",
+      "rubric": "Should say precision is about how many of the predicted positives are truly positive (focusing on false positives), and recall is about how many of the actual positives were caught (focusing on false negatives).",
+      "min_words": 25
+    }
+  ]
+}

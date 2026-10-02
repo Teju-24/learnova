@@ -1,0 +1,156 @@
+{
+  "concept_slug": "langchain-basics",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "LangChain Basics: Building AI Apps with Building Blocks",
+    "summary": "LangChain is a framework that gives you ready-made pieces for building LLM-powered applications — prompts, chains, memory, tools.",
+    "learning_goals": [
+      "Understand what LangChain is and why it exists",
+      "See the main building blocks",
+      "Understand chains as composed steps",
+      "Read a simple chain in code"
+    ],
+    "long_intro": "So far you have learned how AI works — embeddings, transformers, RAG, fine-tuning. Now you want to build something. But building an AI app from scratch is repetitive: you write the same prompt templates, the same retry logic, the same vector database wrapper, the same tool-calling loop. LangChain is a framework that gives you these pieces ready-made. It is like a toolbox for AI apps: you pick the pieces you need, connect them, and focus on your product instead of plumbing. In this lesson you will meet the main building blocks and see how they fit together.",
+    "deep_explanation": [
+      {
+        "heading": "What LangChain is",
+        "body": "LangChain is an open-source framework for building applications powered by language models. It provides abstractions for common patterns: chat models (uniform interface over OpenAI, Anthropic, etc.), prompt templates (parameterised prompts), output parsers (turn model output into structured data), chains (sequence of steps), memory (conversation history), retrievers (RAG search), and tools (functions the model can call). Instead of writing all of this yourself, you import it.",
+        "code": "# Conceptual LangChain imports\n# from langchain.chat_models import ChatOpenAI\n# from langchain.prompts import ChatPromptTemplate\n# from langchain.schema.output_parser import StrOutputParser\n#\n# llm = ChatOpenAI(model=\"gpt-4\")\n# prompt = ChatPromptTemplate.from_template(\"Tell me about {topic}\")\n# chain = prompt | llm | StrOutputParser()\n#\n# result = chain.invoke({\"topic\": \"transformers\"})\n# print(result)\n\nprint(\"LangChain: prompt | llm | parser\")"
+      },
+      {
+        "heading": "Prompts as templates",
+        "body": "Instead of building prompts as raw strings, LangChain lets you define them as templates with placeholders. This makes prompts reusable, testable, and easy to swap. A template like 'Summarise {text} in {n} words' can be invoked with different inputs. Templating also lets you compose prompts — one prompt can include the output of another.",
+        "code": "# Prompt templating (conceptual)\ntemplate = \"Summarise the following text in {n} words:\\n\\n{text}\"\n\ndef render(**kwargs):\n    return template.format(**kwargs)\n\nout = render(\n    n=20,\n    text=\"AI is transforming industries by automating complex tasks.\"\n)\nprint(out)"
+      },
+      {
+        "heading": "Chains: composing steps",
+        "body": "A chain is a sequence of operations that flow from one to the next. The output of step 1 becomes the input of step 2. LangChain uses a pipe syntax: prompt | llm | parser. Chains are how you build multi-step workflows — summarise, then translate; retrieve, then answer; extract, then validate. Each step is a small reusable piece, and the chain expresses the overall flow.",
+        "code": "# A chain in pseudocode\ndef chain(topic):\n    # Step 1: prompt\n    prompt_text = f\"Explain {topic} in one paragraph.\"\n    \n    # Step 2: LLM\n    response = call_llm(prompt_text)\n    \n    # Step 3: parse\n    return response.strip()\n\nprint(chain(\"gradient descent\"))"
+      },
+      {
+        "heading": "Memory and tools",
+        "body": "Two more pieces matter. Memory stores conversation history so the model can refer to earlier turns. Without memory, every message is independent. Tools are functions the model can call — a calculator, a search engine, a database query. LangChain standardises how tools are described and invoked, and provides the loop that lets the model decide which tool to use. Combined, memory + tools turn a simple LLM into a working assistant.",
+        "code": "# Memory + tools (conceptual)\n# memory stores conversation state\n# tools are functions the model can call\n\nconversation = []\n\ndef chat(user_message):\n    conversation.append({\"role\": \"user\", \"content\": user_message})\n    # In practice: send conversation to LLM, get response\n    reply = f\"[reply to: {user_message}]\"\n    conversation.append({\"role\": \"assistant\", \"content\": reply})\n    return reply\n\nprint(chat(\"What is RAG?\"))\nprint(chat(\"Can you give an example?\"))   # remembers context"
+      }
+    ],
+    "formal_definition": "LangChain is an open-source framework for composing LLM-powered applications. It provides abstractions for chat models, prompt templates, output parsers, chains (sequences of operations), memory (state across turns), retrievers (RAG search), and tools (external functions the model can call). A chain is a composition of these building blocks, typically expressed with a pipe operator. LangChain supports both simple pipelines and complex agentic workflows.",
+    "code_example": {
+      "language": "python",
+      "code": "# A minimal LangChain-style chain (without the actual library)\n\ndef build_chain(prompt_template, llm_fn, parser_fn):\n    def chain(inputs):\n        prompt = prompt_template.format(**inputs)\n        raw = llm_fn(prompt)\n        return parser_fn(raw)\n    return chain\n\nprompt_template = \"Classify sentiment of: {text}\\nAnswer with one word.\"\n\ndef fake_llm(prompt):\n    if \"love\" in prompt.lower():\n        return \"Positive\"\n    return \"Negative\"\n\ndef parser(raw):\n    return raw.strip()\n\nchain = build_chain(prompt_template, fake_llm, parser)\nprint(chain({\"text\": \"I love this product\"}))\nprint(chain({\"text\": \"It broke on day one\"}))",
+      "universal_explanation": "The chain combines three pieces: a prompt template, an LLM call, and a parser. This is the fundamental pattern. Real LangChain adds hundreds of integrations and helpers, but the core idea is this composition: prompt | llm | parser."
+    },
+    "common_mistakes": [
+      "Using LangChain when a plain function would do: for very simple tasks, LangChain adds overhead without much benefit.",
+      "Not versioning prompts: prompts are code and should be versioned, tested, and reviewed.",
+      "Ignoring latency: each step in a chain adds a network call. Chains with 5 steps are slow. Measure and optimise.",
+      "Treating LangChain as a silver bullet: it is a framework, not a solution. You still need to design prompts, choose models, and evaluate results."
+    ],
+    "real_world_usage": "LangChain is used in thousands of production AI apps. It is the most popular framework for building LLM applications. Notable users include companies building customer support bots, document Q&A systems, AI copilots, and agentic workflows. Competitors include LlamaIndex (specialised in RAG) and Haystack (production search). LangChain's LangSmith platform adds tracing, evaluation, and monitoring for production deployments.",
+    "key_takeaways": [
+      "LangChain is a framework of building blocks for LLM apps.",
+      "Prompts are templates that make them reusable and testable.",
+      "Chains compose operations: prompt | llm | parser.",
+      "Memory gives the model state across turns.",
+      "Tools let the model call external functions."
+    ],
+    "estimated_minutes": 9
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "LangChain provides building blocks like prompts, chains, memory, retrievers, and ___.",
+      "options": ["tools", "databases", "compilers"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why are prompt templates better than hardcoded prompts?",
+      "choices": [
+        "They are faster to type",
+        "They are reusable, testable, and easy to swap",
+        "They use fewer tokens"
+      ],
+      "correct_index": 1,
+      "reveal": "Templates separate the structure from the inputs. You can test them, version them, and reuse them across the app."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "You build a chatbot and after two messages, it forgets what the user said. What is missing?",
+      "choices": [
+        "A larger model",
+        "Memory — the conversation history is not being kept",
+        "More tokens"
+      ],
+      "correct_index": 1,
+      "reveal": "Memory stores conversation state across turns. Without it, each message is independent. LangChain's memory abstractions handle this."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Chain without parser\nchain = prompt | llm\nresult = chain.invoke({\"topic\": \"transformers\"})\n# result is the raw LLM output object, not a string\nprint(result.upper())   # fails",
+      "wrong_line": 3,
+      "explanation": "The chain does not include an output parser, so the result is the raw LLM response object, not a string. Calling .upper() fails. Add a parser: chain = prompt | llm | StrOutputParser() to get a clean string."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain what a chain is in LangChain and why composing steps is useful.",
+      "rubric": "Should mention that a chain is a sequence of operations where output flows from one step to the next, and composing steps lets you build complex workflows from small reusable pieces.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "A LangChain chain uses the pipe syntax: prompt | llm | ___.",
+      "options": ["parser", "database", "cache"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What does memory do in a LangChain app?",
+      "choices": [
+        "It caches the LLM's responses",
+        "It stores conversation state across turns",
+        "It compresses the model"
+      ],
+      "correct_index": 1,
+      "reveal": "Memory keeps the history of the conversation so the model can refer back to earlier turns."
+    },
+    {
+      "type": "predict",
+      "question": "What is a tool in LangChain?",
+      "choices": [
+        "A smaller language model",
+        "A function the model can call (like a calculator or search)",
+        "A type of prompt"
+      ],
+      "correct_index": 1,
+      "reveal": "Tools are functions the model can invoke with arguments. They let the model do things like search the web, query databases, or run code."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Define a prompt template with placeholders",
+        "Choose a chat model (OpenAI, Anthropic, etc.)",
+        "Add an output parser to structure the response",
+        "Compose them into a chain: prompt | llm | parser",
+        "Invoke the chain with inputs and get the result"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain when you should NOT use LangChain.",
+      "rubric": "Should mention that for very simple tasks (a single LLM call), a plain function is simpler. LangChain is useful when you have multiple steps, memory, tools, or retrieval.",
+      "min_words": 20
+    }
+  ]
+}

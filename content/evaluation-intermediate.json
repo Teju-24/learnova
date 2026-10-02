@@ -1,0 +1,156 @@
+{
+  "concept_slug": "evaluation",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Evaluation: ROC, Cross-Validation, and LLM Evaluation",
+    "summary": "Advanced evaluation uses ROC curves, cross-validation, and — for LLMs — specialised techniques like LLM-as-judge and human preference studies.",
+    "learning_goals": [
+      "Read ROC curves and AUC",
+      "Understand cross-validation and its variants",
+      "Understand LLM evaluation (LLM-as-judge, benchmarks)",
+      "Design an evaluation plan for an AI product"
+    ],
+    "long_intro": "Basic evaluation gives you accuracy, precision, recall, and F1. Advanced evaluation gives you confidence in those numbers, handles class imbalance gracefully, and works for the harder problem of evaluating LLMs. ROC curves show the trade-off between true positives and false positives across thresholds, and AUC summarises it. Cross-validation estimates variance in performance so you know if your numbers are stable. For LLMs, traditional metrics do not apply — outputs are text, not labels — so the field has developed benchmarks, LLM-as-judge, and human preference studies. This lesson covers all three layers.",
+    "deep_explanation": [
+      {
+        "heading": "ROC curves and AUC",
+        "body": "A classifier does not usually output just a class — it outputs a probability, and a threshold converts that to a class label. The ROC curve plots true positive rate (recall) against false positive rate for every threshold. A perfect classifier has a curve hugging the top-left corner; a random classifier has a diagonal line. AUC (Area Under Curve) summarises the whole curve as a single number: 1.0 is perfect, 0.5 is random. AUC is threshold-independent and is the standard for evaluating ranking and probability outputs.",
+        "code": "# ROC and AUC (conceptual)\n# For every threshold t in [0, 1]:\n#   predict 1 if p >= t else 0\n#   compute TPR = TP / (TP + FN)\n#   compute FPR = FP / (FP + TN)\n# Plot TPR vs FPR → ROC curve\n# AUC = integral of curve\n\n# AUC interpretation:\n#   1.0 → perfect\n#   0.9 → excellent\n#   0.8 → good\n#   0.7 → fair\n#   0.5 → no better than random\n\nprint(\"AUC = 0.5 → random; AUC = 1.0 → perfect\")"
+      },
+      {
+        "heading": "Cross-validation",
+        "body": "A single train/test split can give a misleading result — depending on how the data was split, performance can vary. Cross-validation solves this by splitting the data into K folds and running K experiments, each using a different fold as the test set. The mean performance across folds is reported, along with its standard deviation. K=5 or 10 is standard. For time-series data, you use time-ordered splits; for imbalanced data, stratified splits preserve class proportions.",
+        "code": "# K-fold cross-validation (conceptual)\ndef k_fold_split(data, k=5):\n    fold_size = len(data) // k\n    folds = []\n    for i in range(k):\n        start = i * fold_size\n        end = start + fold_size if i < k - 1 else len(data)\n        test = data[start:end]\n        train = data[:start] + data[end:]\n        folds.append((train, test))\n    return folds\n\ndata = list(range(50))\nfor i, (train, test) in enumerate(k_fold_split(data, 5)):\n    print(f\"fold {i}: train={len(train)} test={len(test)}\")"
+      },
+      {
+        "heading": "Evaluating LLMs",
+        "body": "Evaluating LLMs is harder than evaluating classifiers. The output is text, not a label. There is no single correct answer for most questions. The field uses three approaches. Benchmarks: standardised datasets with reference answers (MMLU, HumanEval, GSM8K). LLM-as-judge: a strong model rates outputs from another model against a rubric. Human evaluation: humans rate outputs directly, usually for preference or quality. Each has trade-offs: benchmarks are easy to game; LLM-as-judge has bias; human evaluation is expensive.",
+        "code": "# Three approaches to LLM evaluation\napproaches = {\n    \"Benchmarks\":      {\n        \"example\": \"MMLU, HumanEval, GSM8K\",\n        \"pros\": \"standardised, comparable\",\n        \"cons\": \"can be gamed with training data\",\n    },\n    \"LLM-as-judge\":    {\n        \"example\": \"GPT-4 rates Claude's output\",\n        \"pros\": \"scalable, cheap\",\n        \"cons\": \"position bias, self-preference bias\",\n    },\n    \"Human eval\":      {\n        \"example\": \"preference studies\",\n        \"pros\": \"ground truth, captures nuance\",\n        \"cons\": \"expensive, slow, subjective\",\n    },\n}\n\nfor name, info in approaches.items():\n    print(f\"{name}: {info['pros']}\")"
+      },
+      {
+        "heading": "Designing an evaluation plan",
+        "body": "A complete evaluation plan has four layers. (1) Offline metrics: quantitative measures on held-out data (accuracy, F1, AUC, BLEU, ROUGE). (2) Benchmarks: standardised tasks to compare against published results. (3) Adversarial testing: edge cases designed to break the model. (4) Human review: qualitative assessment of real outputs, especially for generative tasks. Production systems layer all four. Without them, you cannot tell whether a change improves or degrades the system.",
+        "code": "# Evaluation layers\ndef evaluation_plan():\n    return [\n        \"1. Offline metrics (accuracy, F1, AUC)\",\n        \"2. Benchmarks (MMLU, HumanEval)\",\n        \"3. Adversarial testing (edge cases)\",\n        \"4. Human review (qualitative)\",\n    ]\n\nfor layer in evaluation_plan():\n    print(layer)"
+      }
+    ],
+    "formal_definition": "Evaluation for classification uses confusion matrices, from which accuracy, precision, recall, F1, ROC curves, and AUC are derived. Cross-validation estimates performance variance by partitioning data into K folds and averaging results. For LLMs, evaluation uses benchmarks (MMLU, GSM8K, HumanEval), LLM-as-judge (using a strong model to score outputs against rubrics), and human preference studies. Production evaluation combines offline metrics, benchmarks, adversarial testing, and human review.",
+    "code_example": {
+      "language": "python",
+      "code": "import math\n\ndef auc_from_pairs(pos_scores, neg_scores):\n    \"\"\"Compute AUC as probability a random positive scores higher than a random negative.\"\"\"\n    wins = 0\n    total = len(pos_scores) * len(neg_scores)\n    for p in pos_scores:\n        for n in neg_scores:\n            if p > n:\n                wins += 1\n            elif p == n:\n                wins += 0.5\n    return wins / total if total else 0\n\npos_scores = [0.9, 0.8, 0.75, 0.6, 0.95]\nneg_scores = [0.3, 0.4, 0.2, 0.5, 0.1]\n\nprint(f\"AUC: {auc_from_pairs(pos_scores, neg_scores):.3f}\")",
+      "universal_explanation": "AUC can be interpreted as the probability that a random positive example is scored higher than a random negative example. This pairwise view is how it is often implemented and why it is threshold-independent — it looks at the ranking quality, not a specific cutoff."
+    },
+    "common_mistakes": [
+      "Tuning thresholds on the test set: choose the threshold on validation data.",
+      "Reporting accuracy for a ranking task: ranking tasks need AUC, nDCG, MRR.",
+      "Using LLM-as-judge without validation: judge models have known biases (position, verbosity, self-preference). Validate the judge against human judgments.",
+      "Ignoring confidence intervals: a single number is not enough. Report variance across folds or samples."
+    ],
+    "real_world_usage": "Production ML teams track AUC on ranking tasks, F1 on classification, and BLEU/ROUGE on generation. LLM teams at OpenAI, Anthropic, and Google report MMLU, HumanEval, GSM8K scores for every release. RAG systems are evaluated with RAGAS metrics (faithfulness, answer relevance, context precision). Recommendation systems use nDCG and precision@k. Every serious AI product has an evaluation dashboard — it is how teams know whether changes help.",
+    "key_takeaways": [
+      "ROC and AUC evaluate probability outputs across all thresholds.",
+      "Cross-validation estimates variance in performance.",
+      "LLMs are evaluated with benchmarks, LLM-as-judge, and human studies.",
+      "Every evaluation method has trade-offs — no single metric is sufficient.",
+      "Production evaluation layers offline metrics, benchmarks, adversarial tests, and human review."
+    ],
+    "estimated_minutes": 12
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "An AUC of 1.0 means the classifier is ___.",
+      "options": ["perfect", "random", "broken"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why does cross-validation give a more reliable estimate than a single train/test split?",
+      "choices": [
+        "It trains a bigger model",
+        "It averages over multiple splits, showing both mean performance and variance",
+        "It uses more data for training"
+      ],
+      "correct_index": 1,
+      "reveal": "A single split can be lucky or unlucky. Cross-validation runs K experiments with different splits and reports mean and standard deviation, giving a more robust estimate."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A team reports 'our model scores 85 on the benchmark'. Why might this number be misleading?",
+      "choices": [
+        "Benchmarks always lie",
+        "The benchmark may have been in the training data, or may not reflect real-world distribution",
+        "85 is a bad score"
+      ],
+      "correct_index": 1,
+      "reveal": "Benchmarks can be gamed if the test data leaked into training, and they may not reflect the distribution the model will see in production. Benchmarks are useful but not sufficient."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Model evaluation\n# We tuned the threshold on the test set\nbest_threshold = 0.7\nbest_f1 = 0.0\nfor t in [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]:\n    f1 = evaluate(test_data, threshold=t)\n    if f1 > best_f1:\n        best_f1 = f1\n        best_threshold = t\n\n# Then we report best_f1 as the model's performance\nprint(best_f1)",
+      "wrong_line": 8,
+      "explanation": "The threshold is selected by maximising F1 on the test set. This leaks information about the test set into the model — the reported best_f1 is optimistically biased. The threshold must be chosen on validation data. The test set should be used only once for a final report."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain the trade-offs between using benchmarks, LLM-as-judge, and human evaluation for LLMs.",
+      "rubric": "Should mention that benchmarks are standardised but can be gamed, LLM-as-judge is scalable but has biases, and human evaluation is the ground truth but expensive and slow.",
+      "min_words": 30
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "An AUC of 0.5 means the classifier performs the same as ___.",
+      "options": ["random chance", "perfect prediction", "majority class"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which metric is best for a ranking task where class labels are not the output?",
+      "choices": [
+        "Accuracy",
+        "AUC or nDCG",
+        "F1"
+      ],
+      "correct_index": 1,
+      "reveal": "Ranking tasks (search results, recommendations) are evaluated with ranking metrics like AUC, nDCG, or MRR, not classification accuracy."
+    },
+    {
+      "type": "predict",
+      "question": "Why is LLM-as-judge not a perfect evaluation method?",
+      "choices": [
+        "It is too slow",
+        "It has known biases such as position bias and self-preference",
+        "It cannot evaluate text"
+      ],
+      "correct_index": 1,
+      "reveal": "Judge models (usually strong LLMs) have systematic biases: they may prefer answers that appear first, longer answers, or their own outputs. Judge results should be validated against human judgments."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Split data into train, validation, and test sets",
+        "Train the model on the training set",
+        "Tune hyperparameters and thresholds on the validation set",
+        "Evaluate once on the test set for the final report",
+        "Run adversarial tests and human review for production readiness"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why evaluating LLMs is harder than evaluating classifiers.",
+      "rubric": "Should mention that LLM outputs are free-form text without a single correct answer, so traditional accuracy/precision/recall metrics do not directly apply. LLM evaluation requires benchmarks, LLM judges, or human preference studies.",
+      "min_words": 25
+    }
+  ]
+}

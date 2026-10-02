@@ -1,0 +1,150 @@
+{
+  "concept_slug": "backprop",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Backpropagation: How Errors Flow Backward",
+    "summary": "Backpropagation is the algorithm that tells every weight in a network how much it contributed to the error, so the network can fix itself.",
+    "learning_goals": [
+      "Understand backpropagation as a blame-assignment algorithm",
+      "See how errors flow backward through layers",
+      "Understand why backprop is what makes deep learning possible",
+      "Read a tiny backprop example in Python"
+    ],
+    "long_intro": "You know that a neural network is trained by reducing its loss. But how does the network know which weights to change and by how much? A network with a million weights has a million different ways it could be wrong — how do we figure out which ones to blame? The answer is backpropagation, one of the most important algorithms in all of modern computing. It takes the error at the output and systematically assigns blame backward through every layer, all the way to the input. Once you understand backprop, deep learning stops being a black box.",
+    "deep_explanation": [
+      {
+        "heading": "The problem: who is at fault?",
+        "body": "Imagine a factory assembly line where the final product came out wrong. Which worker made the mistake? The last one, the first one, or someone in the middle? Backpropagation is the algorithm that answers this for neural networks. It looks at how wrong the final output was, and traces back through every layer to figure out how much each weight contributed to that error. If a specific weight had been slightly different, how much would the final error have changed? That sensitivity is the gradient, and backprop computes it efficiently for every weight in the network at once.",
+        "code": "# The idea in one sentence:\n# 'If I nudge this weight by a tiny amount, how much does the loss change?'\n\n# Each weight gets a number that answers this question.\n# Weights with large numbers get changed more.\n# Weights with near-zero numbers barely change.\n\nprint(\"Backprop answers: 'who is to blame?' for every weight.\")"
+      },
+      {
+        "heading": "The chain rule, gently",
+        "body": "The mathematical tool behind backprop is the chain rule from calculus. It says that if the output depends on a chain of operations, the derivative of the output with respect to an early input is the product of the derivatives of each link in the chain. In a neural network, the chain is: input → layer 1 → layer 2 → ... → output → loss. To find how much a weight in layer 1 affected the loss, you multiply the sensitivities at every step from that weight forward to the loss. The chain rule makes this efficient — no need to re-run the network for each weight.",
+        "code": "# Chain rule in one line\n# d(loss)/d(w1) = d(loss)/d(out) * d(out)/d(h2) * d(h2)/d(h1) * d(h1)/d(w1)\n\n# Each factor is simple locally.\n# Their product gives the global sensitivity.\n\nprint(\"Chain rule: multiply local sensitivities to get the global gradient.\")"
+      },
+      {
+        "heading": "Forward pass then backward pass",
+        "body": "Training with backprop is a two-phase process. First, the forward pass: run the input through the network to get a prediction, then compute the loss. Second, the backward pass: start from the loss and work backwards through each layer, computing how much each weight should change. The result of the backward pass is a gradient for every weight. Once you have all the gradients, one optimizer step updates every weight in the direction that reduces the loss. Then you repeat.",
+        "code": "# Two phases of training\n\n# Phase 1: FORWARD\n#   input -> layer1 -> layer2 -> output -> loss\n\n# Phase 2: BACKWARD\n#   loss -> how wrong is output? -> adjust last layer weights\n#        -> how much did layer2 contribute? -> adjust layer2 weights\n#        -> how much did layer1 contribute? -> adjust layer1 weights\n\nprint(\"Forward computes predictions. Backward computes blame.\")"
+      }
+    ],
+    "formal_definition": "Backpropagation is an efficient algorithm for computing the gradient of a loss function with respect to all weights in a neural network. It applies the chain rule of calculus layer by layer in reverse order, reusing computations so that the total cost is roughly the same as one forward pass. The gradients are then used by an optimizer (such as SGD or Adam) to update the weights and reduce the loss.",
+    "code_example": {
+      "language": "python",
+      "code": "# Two-layer network, tiny numeric gradient check\ndef forward(x, w1, w2):\n    h = x * w1              # layer 1\n    y = h * w2              # layer 2\n    return y, h\n\ndef loss(y, target):\n    return (y - target) ** 2\n\nx, target = 2.0, 10.0\nw1, w2 = 1.0, 1.0\n\n# Forward pass\ny, h = forward(x, w1, w2)\nprint(f\"prediction: {y}, loss: {loss(y, target):.2f}\")\n\n# Backward pass (using chain rule by hand)\n# d(loss)/d(y) = 2*(y - target)\n# d(y)/d(w2) = h\n# d(y)/d(h) = w2, d(h)/d(w1) = x\nd_loss_dy = 2 * (y - target)\nd_loss_dw2 = d_loss_dy * h\nd_loss_dw1 = d_loss_dy * w2 * x\n\nprint(f\"gradient wrt w1: {d_loss_dw1}\")\nprint(f\"gradient wrt w2: {d_loss_dw2}\")",
+      "universal_explanation": "The network computes a prediction (y = x * w1 * w2), then the loss. In the backward pass, the chain rule tells us how much the loss would change if we nudged w1 or w2 by a tiny amount. Both gradients are negative, meaning the current weights produce a prediction below the target — the optimizer would increase both weights to reduce the loss."
+    },
+    "common_mistakes": [
+      "Thinking backprop is a learning algorithm: it only computes gradients. The actual learning is done by the optimizer (SGD, Adam) using those gradients.",
+      "Confusing backprop with forward pass: forward computes predictions and loss; backward computes gradients.",
+      "Assuming gradients are always correct: if the network is numerically unstable (e.g., very deep with sigmoid activations), gradients can vanish or explode.",
+      "Forgetting that backprop needs a differentiable loss: it relies on calculus, so the loss and every operation in the network must be differentiable."
+    ],
+    "real_world_usage": "Every modern neural network is trained with backprop. When you call loss.backward() in PyTorch or TensorFlow, that line is running backprop. GPT, Claude, Stable Diffusion, ResNet, and every other model you have heard of uses backprop to compute gradients during training. Without backprop, deep learning would be computationally infeasible — its efficiency is what made the field possible.",
+    "key_takeaways": [
+      "Backpropagation assigns blame for the error to every weight in the network.",
+      "It uses the chain rule to compute gradients efficiently.",
+      "Training is a forward pass (predict) followed by a backward pass (compute gradients).",
+      "Backprop itself does not learn — the optimizer uses its output to learn.",
+      "Every modern neural network is trained with backprop."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Backpropagation computes how much each ___ contributed to the total loss.",
+      "options": ["weight", "input", "class"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If a weight has a large positive gradient, what does the optimizer do to it?",
+      "choices": [
+        "Increase the weight",
+        "Decrease the weight",
+        "Leave it unchanged"
+      ],
+      "correct_index": 1,
+      "reveal": "Optimizers move weights opposite the gradient. A large positive gradient means decreasing that weight reduces the loss."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "In a two-layer network, which layer's gradients are computed FIRST during the backward pass?",
+      "choices": [
+        "Layer 1 (the first layer)",
+        "Layer 2 (the last layer)",
+        "Both layers at the same time"
+      ],
+      "correct_index": 1,
+      "reveal": "The backward pass starts from the loss and works backward. Layer 2 (closest to the output) has its gradients computed first."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# Training step\nfor x, y in data:\n    pred = model(x)\n    loss = loss_fn(pred, y)\n    loss.backward()\n    optimizer.zero_grad()\n    optimizer.step()",
+      "wrong_line": 6,
+      "explanation": "optimizer.zero_grad() is called AFTER loss.backward(). It should be called BEFORE the forward pass — otherwise it clears the gradients that backward just computed, and optimizer.step() updates with zero gradients. The correct order is zero_grad → forward → loss → backward → step."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain the difference between the forward pass and the backward pass in training.",
+      "rubric": "Should say the forward pass computes predictions and loss; the backward pass computes gradients (how much each weight contributed to the loss).",
+      "min_words": 20
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Backpropagation uses the ___ rule of calculus to compute gradients layer by layer.",
+      "options": ["chain", "product", "sum"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "What is the output of backpropagation?",
+      "choices": [
+        "Predictions on the training data",
+        "The loss value",
+        "A gradient for every weight in the network"
+      ],
+      "correct_index": 2,
+      "reveal": "Backprop outputs gradients — one per weight. The optimizer uses those gradients to update weights."
+    },
+    {
+      "type": "predict",
+      "question": "In PyTorch, which line actually runs backprop?",
+      "choices": [
+        "pred = model(x)",
+        "loss = loss_fn(pred, y)",
+        "loss.backward()"
+      ],
+      "correct_index": 2,
+      "reveal": "loss.backward() triggers the backward pass. It computes gradients for every parameter with requires_grad=True."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Forward pass: compute predictions on a batch",
+        "Compute the loss between predictions and true labels",
+        "Backward pass: run backprop to get gradients",
+        "Optimizer step: update weights using the gradients",
+        "Zero gradients so they do not accumulate on the next iteration"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why backpropagation is efficient compared to computing each gradient independently.",
+      "rubric": "Should mention that backprop reuses intermediate computations from the forward pass and processes all layers in a single backward sweep, so the total cost is similar to one forward pass instead of N forward passes for N weights.",
+      "min_words": 20
+    }
+  ]
+}

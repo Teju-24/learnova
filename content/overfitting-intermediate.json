@@ -1,0 +1,151 @@
+{
+  "concept_slug": "overfitting",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Overfitting: Regularisation, Dropout, and Early Stopping",
+    "summary": "Overfitting is not inevitable. Regularisation techniques — dropout, weight decay, data augmentation, early stopping — push models toward generalisation.",
+    "learning_goals": [
+      "Understand regularisation as a penalty on complexity",
+      "Read L2 weight decay and dropout in code",
+      "Understand data augmentation and early stopping",
+      "Diagnose overfitting from loss curves"
+    ],
+    "long_intro": "You know that overfitting is a real problem. Now let us talk about how to fight it. There are four main defences, and every serious training pipeline uses at least two of them. Regularisation adds a penalty for large weights, discouraging the model from depending too much on any single feature. Dropout randomly disables neurons during training, forcing the model to be robust. Data augmentation creates variations of your training examples, effectively increasing dataset size. Early stopping watches the validation loss and halts training when it starts to rise. Together these techniques are what make modern deep learning work at all.",
+    "deep_explanation": [
+      {
+        "heading": "L2 regularisation (weight decay)",
+        "body": "L2 regularisation adds a penalty proportional to the sum of squared weights to the loss. This discourages the model from having large weights, which in turn discourages it from relying on any single input feature too heavily. The penalty strength is controlled by a hyperparameter λ (lambda). In PyTorch, L2 regularisation is built into the optimizer as weight_decay. Values around 1e-4 to 1e-2 are typical. Too little and the model overfits; too much and it underfits.",
+        "code": "# Loss with L2 regularisation\n# loss_total = loss_data + lambda * sum(w^2)\n\nweights = [0.5, -0.3, 0.8]\nlam = 0.01\n\nloss_data = 0.42\nl2_penalty = lam * sum(w ** 2 for w in weights)\ntotal_loss = loss_data + l2_penalty\n\nprint(f\"data loss: {loss_data}\")\nprint(f\"L2 penalty: {l2_penalty:.4f}\")\nprint(f\"total loss: {total_loss:.4f}\")"
+      },
+      {
+        "heading": "Dropout",
+        "body": "Dropout randomly sets a fraction of neuron activations to zero during each training step. This prevents neurons from co-adapting — a neuron cannot rely on the specific presence of another neuron because that other neuron might be dropped out next step. At test time, dropout is turned off. This simple trick has become a standard regulariser in almost every deep network. Typical dropout rates are 0.1 to 0.5, with higher rates for larger models.",
+        "code": "import random\n\ndef dropout(activations, rate=0.5):\n    if not activations:\n        return activations\n    scale = 1.0 / (1.0 - rate)\n    return [\n        a * scale if random.random() > rate else 0.0\n        for a in activations\n    ]\n\nrandom.seed(42)\nacts = [0.8, -0.5, 0.3, 1.2]\nprint(\"original:\", acts)\nprint(\"after dropout:\", dropout(acts, rate=0.5))"
+      },
+      {
+        "heading": "Data augmentation",
+        "body": "Data augmentation creates variations of your training examples. For images, this might mean flipping, cropping, rotating, or changing brightness. For text, it might mean synonym replacement or back-translation. The augmented examples are not new information, but they force the model to be invariant to those transformations. A model that has seen the same cat both upright and rotated is less likely to overfit to the specific orientation of the training set. Augmentation is one of the highest-return investments in practical ML.",
+        "code": "# Simple image augmentation (conceptual)\ndef augment(image, operations):\n    for op in operations:\n        if op == \"flip\":\n            image = list(reversed(image))\n        elif op == \"shift\":\n            image = [image[-1]] + image[:-1]\n    return image\n\nimg = [1, 2, 3, 4, 5]\nprint(\"original:\", img)\nprint(\"flipped: \", augment(img, [\"flip\"]))\nprint(\"shifted: \", augment(img, [\"shift\"]))"
+      },
+      {
+        "heading": "Early stopping",
+        "body": "Early stopping is the simplest regulariser: watch the validation loss, and stop training when it stops improving. Save the model at the epoch with the best validation performance. This requires no change to the model or loss function — just patience and a stopping criterion. Typical patience is 3-10 epochs without improvement. Early stopping is not a replacement for other techniques; it is used alongside them. But it is often the easiest way to gain 2-5% accuracy on a task.",
+        "code": "def train_with_early_stopping(epochs, patience=3):\n    best_loss = float(\"inf\")\n    best_epoch = 0\n    no_improvement = 0\n\n    # Placeholder test losses\n    test_losses = [0.9, 0.6, 0.4, 0.35, 0.37, 0.42, 0.50, 0.60]\n\n    for epoch in range(epochs):\n        val_loss = test_losses[epoch] if epoch < len(test_losses) else 1.0\n        if val_loss < best_loss:\n            best_loss = val_loss\n            best_epoch = epoch\n            no_improvement = 0\n        else:\n            no_improvement += 1\n            if no_improvement >= patience:\n                print(f\"Stopped at epoch {epoch}\")\n                break\n\n    return best_epoch, best_loss\n\nprint(train_with_early_stopping(8, 3))"
+      }
+    ],
+    "formal_definition": "Overfitting mitigation techniques fall into four categories: (1) parameter regularisation (L1, L2, weight decay) penalises large weights; (2) structural regularisation (dropout, batch norm) introduces noise or normalisation during training; (3) data-level augmentation expands the effective training set; (4) training-process control (early stopping, learning rate schedules) stops or slows training when generalisation starts to degrade. Most production models combine at least two of these.",
+    "code_example": {
+      "language": "python",
+      "code": "# Conceptual PyTorch training loop with regularisation\n# import torch.nn as nn\n# import torch.optim as optim\n#\n# model = nn.Sequential(\n#     nn.Linear(784, 256),\n#     nn.ReLU(),\n#     nn.Dropout(0.3),         # dropout regularisation\n#     nn.Linear(256, 10),\n# )\n#\n# optimizer = optim.AdamW(model.parameters(),\n#     lr=1e-3, weight_decay=1e-4)   # L2 regularisation\n#\n# best_val_loss = float(\"inf\")\n# patience = 5\n# no_improve = 0\n#\n# for epoch in range(epochs):\n#     train_one_epoch(model, optimizer, train_loader)\n#     val_loss = evaluate(model, val_loader)\n#     if val_loss < best_val_loss:\n#         best_val_loss = val_loss\n#         no_improve = 0\n#     else:\n#         no_improve += 1\n#         if no_improve >= patience:\n#             break   # early stopping",
+      "universal_explanation": "This is the shape of every serious PyTorch training loop. Dropout sits inside the model. Weight decay is passed to the optimizer. Early stopping wraps the epoch loop. Together they produce models that generalise instead of memorise."
+    },
+    "common_mistakes": [
+      "Using dropout at inference time: dropout is only applied during training. At test time, all neurons are active.",
+      "Setting weight decay too high: it prevents the model from learning the signal at all, leading to underfitting.",
+      "Relying on only one regulariser: dropout, weight decay, and augmentation work best together.",
+      "Stopping training based on training loss: early stopping must monitor validation loss, not training loss."
+    ],
+    "real_world_usage": "Every modern deep learning pipeline uses these techniques. GPT models use weight decay and dropout. Image classifiers use aggressive data augmentation (random crops, flips, colour jitter). Speech recognition uses time-shift and pitch-shift augmentation. Even fine-tuning a pretrained model usually involves a small learning rate plus early stopping based on validation loss. When you read a research paper, the 'implementation details' section almost always lists which regularisers were used and at what strength.",
+    "key_takeaways": [
+      "L2 regularisation penalises large weights; built into most optimizers as weight_decay.",
+      "Dropout randomly disables neurons during training, making the model robust.",
+      "Data augmentation expands the effective training set with transformations.",
+      "Early stopping watches validation loss and halts when it starts to rise.",
+      "Modern training pipelines combine multiple regularisers."
+    ],
+    "estimated_minutes": 11
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "L2 regularisation penalises large ___ in the model.",
+      "options": ["weights", "inputs", "losses"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What happens to dropout at inference (test) time?",
+      "choices": [
+        "It is applied at the same rate as during training",
+        "It is turned off — all neurons are active",
+        "It is applied twice as strongly"
+      ],
+      "correct_index": 1,
+      "reveal": "Dropout is only active during training. At test time, all neurons contribute, and their outputs are scaled to compensate for the training-time scaling."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Validation loss decreases until epoch 5, then rises for 3 epochs straight. With patience=3, what does early stopping do?",
+      "choices": [
+        "Keeps training until epoch 10",
+        "Stops at epoch 8, keeping the model from epoch 5",
+        "Restarts training from epoch 0"
+      ],
+      "correct_index": 1,
+      "reveal": "Patience of 3 means stop after 3 consecutive epochs without improvement. Best model was at epoch 5; training runs 6, 7, 8 (three non-improving epochs), then stops."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "# PyTorch model\nmodel = nn.Sequential(\n    nn.Linear(784, 256),\n    nn.ReLU(),\n    nn.Dropout(0.3),\n    nn.Linear(256, 10),\n)\n\n# Test time\nmodel.eval()\nmodel.train()   # ← this line should not be here\noutput = model(test_input)",
+      "wrong_line": 10,
+      "explanation": "Line 10 calls model.train() right before inference. This switches dropout back on, corrupting the test prediction. During evaluation, the model must stay in eval mode (which the previous line set). Remove model.train()."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain how dropout prevents overfitting.",
+      "rubric": "Should mention that dropout randomly disables neurons during training, preventing them from co-adapting to specific other neurons, forcing the network to be robust to the absence of any single unit.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Early stopping monitors the ___ loss, not the training loss.",
+      "options": ["validation", "test", "initial"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "A model overfits on a small dataset. Which combination is likely to help most?",
+      "choices": [
+        "Removing dropout, adding more parameters",
+        "Adding dropout, weight decay, and data augmentation",
+        "Training for more epochs with the same setup"
+      ],
+      "correct_index": 1,
+      "reveal": "Combining multiple regularisers is the standard remedy. Adding capacity or training longer makes overfitting worse."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "# Training with dropout\nmodel.train()\nfor x, y in train_loader:\n    optimizer.zero_grad()\n    out = model(x)\n    loss = loss_fn(out, y)\n    loss.backward()\n    optimizer.step()\n\n# Evaluate\nout = model(test_x)\nacc = (out.argmax(1) == test_y).float().mean()",
+      "wrong_line": 11,
+      "explanation": "Line 11 evaluates the model without switching to model.eval() first. Dropout is still active, so the output is corrupted by random neuron drops. Add model.eval() before the evaluation, and model.train() before the next training loop."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Split data into train and validation sets",
+        "Train the model with dropout and weight decay",
+        "Evaluate on the validation set after each epoch",
+        "Track best validation loss and patience counter",
+        "Stop training when patience is exhausted"
+      ],
+      "correct_order": [0, 1, 2, 3, 4]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why data augmentation helps reduce overfitting.",
+      "rubric": "Should mention that augmentation creates variations of existing examples, effectively increasing the size and diversity of the training set, which makes it harder for the model to memorise specific examples.",
+      "min_words": 20
+    }
+  ]
+}

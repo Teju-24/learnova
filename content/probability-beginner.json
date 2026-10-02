@@ -1,0 +1,139 @@
+{
+  "concept_slug": "probability",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Probability: Reasoning Under Uncertainty",
+    "summary": "Probability is the language we use to describe how confident we are about something. Every prediction an AI model makes is a probability.",
+    "learning_goals": [
+      "Understand probability as a number between 0 and 1",
+      "Read probabilities in real scenarios",
+      "Understand why AI models output probabilities, not certainties",
+      "See why uncertainty is unavoidable in the real world"
+    ],
+    "long_intro": "Every time an AI model says a photo contains a cat, it is not saying 'this is a cat.' It is saying 'I am 94% confident this is a cat.' The 94% is a probability. Machine learning is built on probability because the real world is uncertain: the same input can mean different things, our measurements are noisy, and our models never see the whole picture. This lesson teaches you how to read and reason about probabilities without requiring any math background. Once you are comfortable with the idea that a probability is a number expressing confidence, everything else in AI clicks into place.",
+    "deep_explanation": [
+      {
+        "heading": "What a probability is",
+        "body": "A probability is a number between 0 and 1 that expresses how likely something is. A probability of 0 means 'impossible.' A probability of 1 means 'certain.' A probability of 0.5 means 'even odds' — like a fair coin flip. You can also write probabilities as percentages: 0.94 is the same as 94%. The rule is simple: probabilities are always between 0 and 1 (inclusive). If you ever see a number outside that range, something is wrong.",
+        "code": "p_rain = 0.30      # 30% chance of rain\np_cat = 0.94       # 94% confident this is a cat\np_tie = 0.50       # even odds\nprint(p_cat)       # shows 0.94"
+      },
+      {
+        "heading": "Why we need probabilities",
+        "body": "In school, questions have definite answers: what is 2 + 2? Four, always. In the real world, very few questions have definite answers. Will it rain tomorrow? Is this email spam? Does this patient have the flu? Will this user click this ad? For all of these, the honest answer is a probability. AI models are useful precisely because they produce probabilities rather than pretending to know for certain. When a model outputs 0.9 for spam, the system might auto-flag the email. When it outputs 0.55, the system might send it to the user's spam folder cautiously. The probability decides the action.",
+        "code": "def decide(p_spam):\n    if p_spam > 0.9:\n        return \"auto-block\"\n    elif p_spam > 0.5:\n        return \"move to spam folder\"\n    else:\n        return \"inbox\"\n\nprint(decide(0.95))   # auto-block\nprint(decide(0.6))    # move to spam folder"
+      },
+      {
+        "heading": "Uncertainty is a feature, not a bug",
+        "body": "One of the most useful things a model can do is tell you when it is unsure. A model that predicts a 50% chance of rain is saying something important: 'I cannot tell.' A model that always outputs 0.99 for everything is not confident — it is broken. Real AI systems use the confidence level to decide whether to act, ask for help, or fall back to a human. The probability itself becomes a signal for downstream decisions.",
+        "code": "# When confidence is low, ask for more information\ndef classify(confidence, prediction):\n    if confidence < 0.6:\n        return \"Need more information\"\n    return f\"Likely: {prediction}\"\n\nprint(classify(0.55, \"cat\"))   # Need more information\nprint(classify(0.92, \"cat\"))   # Likely: cat"
+      }
+    ],
+    "formal_definition": "A probability is a real number in the interval [0, 1] assigned to an event, satisfying: (1) the probability of a certain event is 1, (2) the probability of an impossible event is 0, and (3) the probabilities of all mutually exclusive outcomes of an experiment sum to 1. Probabilities are often written as decimals (0.75) or percentages (75%).",
+    "code_example": {
+      "language": "python",
+      "code": "def confidence_message(p):\n    if p >= 0.9:\n        return \"Very confident\"\n    elif p >= 0.7:\n        return \"Fairly confident\"\n    elif p >= 0.5:\n        return \"Leaning yes\"\n    else:\n        return \"Leaning no\"\n\nprint(confidence_message(0.94))   # Very confident\nprint(confidence_message(0.65))   # Leaning yes",
+      "universal_explanation": "The function takes a probability and returns a natural language label. This is exactly what every AI assistant does when it decides how strongly to act on its own prediction."
+    },
+    "common_mistakes": [
+      "Confusing probability with certainty: 0.94 is not 1.0. The model is confident, not infallible.",
+      "Using percentages and decimals inconsistently: 94 and 0.94 both represent '94%', but only 0.94 is a valid probability.",
+      "Adding probabilities of overlapping events: the probability of raining on Saturday OR Sunday is not P(Sat) + P(Sun) if those events are correlated.",
+      "Assuming a low probability means 'impossible': a 0.01 probability still happens 1 in 100 times. Over millions of users, that is a lot."
+    ],
+    "real_world_usage": "Every AI system you interact with is built on probabilities. Gmail's spam filter outputs a probability. Netflix's recommendation is a ranked list by predicted probability of you enjoying each title. Voice assistants output probabilities for every possible next word. Medical imaging models output probabilities for cancer, which radiologists combine with their own judgment. Probability is not a theoretical concept — it is the actual output of the models you use every day.",
+    "key_takeaways": [
+      "A probability is a number between 0 and 1 expressing confidence.",
+      "0 means impossible, 1 means certain, 0.5 means even odds.",
+      "AI models output probabilities, not definite answers.",
+      "Uncertainty is fundamental to the real world.",
+      "Low confidence is useful information, not a failure."
+    ],
+    "estimated_minutes": 8
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "A probability of 1 means the event is ___.",
+      "options": ["certain", "unlikely", "impossible"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "A spam filter outputs p_spam = 0.82 for an email. Should it auto-block it (threshold 0.9) or move to spam folder (threshold 0.5)?",
+      "choices": ["Auto-block", "Move to spam folder", "Leave in inbox"],
+      "correct_index": 1,
+      "reveal": "0.82 is above 0.5 but below 0.9, so the email goes to the spam folder rather than being auto-blocked."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "An AI predicts p_cat = 0.51 for a photo. What is the most honest interpretation?",
+      "choices": [
+        "The photo is definitely a cat",
+        "The photo is probably a cat but the model is uncertain",
+        "The photo is definitely not a cat"
+      ],
+      "correct_index": 1,
+      "reveal": "0.51 is just above even odds. The model is uncertain — this is a case where downstream systems might want to ask a human."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why AI models output probabilities instead of definite answers.",
+      "rubric": "Should mention that real-world questions rarely have definite answers, uncertainty is inherent to data, and probabilities let downstream systems decide how strongly to act.",
+      "min_words": 15
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "A probability of 0.5 is equivalent to a ___ chance.",
+      "options": ["50%", "5%", "100%"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "A model outputs p = 0.95 for 'this review is positive'. What is the correct interpretation?",
+      "choices": [
+        "The review is definitely positive",
+        "The model is highly confident it is positive",
+        "The model cannot decide"
+      ],
+      "correct_index": 1,
+      "reveal": "0.95 means high confidence, not certainty. No model is ever 100% sure."
+    },
+    {
+      "type": "predict",
+      "question": "Given: p = 0.3. Is this a valid probability?",
+      "choices": [
+        "Yes, 0.3 is between 0 and 1",
+        "No, probabilities must be integers",
+        "No, probabilities must be above 0.5"
+      ],
+      "correct_index": 0,
+      "reveal": "Any number between 0 and 1 inclusive is a valid probability. 0.3 is perfectly fine."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Model outputs a probability for each class",
+        "System compares the highest probability to a threshold",
+        "If above threshold, take the corresponding action",
+        "If below threshold, defer or ask for more information"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why a model that outputs 0.99 for every input is not actually 'very confident.'",
+      "rubric": "Should mention that a model which always outputs the same high probability is not discriminating between inputs — confidence should vary with the actual signal in the data.",
+      "min_words": 15
+    }
+  ]
+}

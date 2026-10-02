@@ -1,0 +1,142 @@
+{
+  "concept_slug": "neural-networks",
+  "tier": "beginner",
+  "concept_note": {
+    "title": "Neural Networks: Layers of Simple Decisions",
+    "summary": "A neural network is a stack of simple mathematical operations. Individually, each layer is trivial. Together, they can learn almost anything.",
+    "learning_goals": [
+      "Understand neurons as weighted sums plus activation",
+      "See how layers compose into a network",
+      "Understand what 'deep' means in deep learning",
+      "Read a tiny neural network in Python"
+    ],
+    "long_intro": "Neural networks are the workhorse of modern AI. They power image recognition, language translation, voice assistants, and every large language model. But underneath the hype, a neural network is surprisingly simple. It is a stack of layers, where each layer computes a weighted sum of its inputs and passes the result through a simple nonlinear function. What makes them powerful is not the complexity of any individual layer — it is the depth of the stack. Many simple operations, composed together, can approximate astonishingly complex functions.",
+    "deep_explanation": [
+      {
+        "heading": "The neuron: weighted sum plus activation",
+        "body": "The fundamental unit of a neural network is called a neuron (also node or unit). It takes several inputs, multiplies each by its own weight, adds them up, adds a bias, and passes the result through a nonlinear activation function. The weights and bias are what the network learns. The activation function is what makes the network more than just a linear function. Common activations are ReLU (which outputs max(0, x)) and sigmoid (which outputs a value between 0 and 1).",
+        "code": "def relu(x):\n    return max(0, x)\n\ndef neuron(inputs, weights, bias):\n    z = sum(i * w for i, w in zip(inputs, weights)) + bias\n    return relu(z)\n\ninputs = [1.0, 0.5, -0.3]\nweights = [0.8, 0.4, 0.9]\nbias = -0.2\n\nprint(neuron(inputs, weights, bias))   # 1.03"
+      },
+      {
+        "heading": "Layers: many neurons at once",
+        "body": "A layer is just a collection of neurons that all receive the same inputs and produce their own outputs. A layer with three neurons takes an input vector of any size and outputs a vector of length three. The weights for a whole layer can be stored as a matrix, which is why the operation is sometimes called a 'matrix multiplication' — but conceptually, it is just three neurons doing their own thing in parallel.",
+        "code": "def layer(inputs, weights_matrix, biases):\n    outputs = []\n    for weights, bias in zip(weights_matrix, biases):\n        outputs.append(neuron(inputs, weights, bias))\n    return outputs\n\ninputs = [1.0, 0.5]\nweights_matrix = [\n    [0.8, 0.4],   # neuron 1\n    [0.3, 0.9],   # neuron 2\n    [0.6, 0.1],   # neuron 3\n]\nbiases = [0.1, -0.2, 0.0]\n\nprint(layer(inputs, weights_matrix, biases))   # [1.1, 0.55, 0.65]"
+      },
+      {
+        "heading": "Stacking layers: where the power comes from",
+        "body": "A single layer can only compute linear boundaries — useful but limited. Stacking layers creates a deep network: the output of one layer becomes the input of the next. The early layers learn simple features (edges, basic patterns), and the later layers combine these into complex features (shapes, objects, faces). This is the fundamental idea behind deep learning: depth gives you composition, and composition gives you power.",
+        "code": "# A two-layer network\ndef network(x):\n    # Layer 1\n    h1 = layer(x, [[0.8, 0.4], [0.3, 0.9]], [0.1, -0.2])\n    # Layer 2\n    out = layer(h1, [[1.0, -0.5]], [0.0])\n    return out\n\nx = [1.0, 0.5]\nprint(network(x))   # a small number"
+      },
+      {
+        "heading": "Training: what actually changes",
+        "body": "The architecture of a network — how many layers, how many neurons per layer — is chosen by you. The weights and biases are learned by training. Training means showing the network examples, computing the loss, computing gradients of the loss with respect to every weight, and updating the weights to reduce the loss. The gradients flow backward through the layers via a process called backpropagation, which we will cover in the next lesson. For now, the key idea: the network's shape is designed, its weights are learned.",
+        "code": "# Training loop (conceptual)\n# for epoch in range(epochs):\n#     for x, y in data:\n#         pred = network(x)\n#         loss = loss_fn(pred, y)\n#         loss.backward()      # compute gradients\n#         optimizer.step()     # update weights\n\nprint(\"Training loop shapes:\")\nprint(\"  forward: input → layer1 → layer2 → output\")\nprint(\"  backward: output error → layer2 → layer1 → weights\")\nprint(\"  update: weights := weights - lr * gradient\")"
+      }
+    ],
+    "formal_definition": "A feedforward neural network is a composition of functions: y = f_L(f_{L-1}(...f_1(x))), where each f_i is a layer applying an affine transform followed by a nonlinear activation: f_i(x) = σ(W_i x + b_i). The weights W_i and biases b_i are learned. Depth refers to the number of layers L. Universal approximation theorems state that sufficiently wide networks with one hidden layer can approximate any continuous function on a compact domain, though deep networks typically learn such functions more efficiently.",
+    "code_example": {
+      "language": "python",
+      "code": "def relu(x):\n    return max(0, x)\n\ndef forward(x, weights1, bias1, weights2, bias2):\n    # Layer 1: three neurons\n    h = [\n        relu(x[0] * w[0] + x[1] * w[1] + b)\n        for w, b in zip(weights1, bias1)\n    ]\n    # Layer 2: one output neuron\n    out = relu(h[0] * weights2[0] + h[1] * weights2[1] + h[2] * weights2[2] + bias2)\n    return out\n\nx = [0.8, -0.3]\nw1 = [[0.5, 0.2], [-0.3, 0.9], [0.7, -0.4]]\nb1 = [0.1, -0.1, 0.2]\nw2 = [0.6, -0.5, 0.8]\nb2 = 0.0\n\nprint(round(forward(x, w1, b1, w2, b2), 3))",
+      "universal_explanation": "The network takes a two-dimensional input, runs it through a hidden layer of three ReLU neurons, then combines those into a single output. The forward pass is a sequence of multiplications and additions. Nothing magical — just a small sequence of arithmetic with learned weights."
+    },
+    "common_mistakes": [
+      "Forgetting the activation function: a network of only linear layers is mathematically equivalent to a single linear layer. Nonlinearity is what makes depth useful.",
+      "Confusing 'deep' with 'better': very deep networks can be harder to train. Depth helps when it matches the problem.",
+      "Thinking bigger is always better: a huge network on small data overfits. Size should match the task.",
+      "Ignoring training time: doubling layers quadruples training time and required data. It is rarely free."
+    ],
+    "real_world_usage": "Every image classifier you use (Google Photos, face unlock) is a neural network. Every language model (GPT, Claude, Llama) is a neural network — a very large one with billions of parameters. Speech recognition, translation, recommendation systems, medical imaging, drug discovery — all neural networks. They won because a stack of simple operations, trained on enough data, can solve problems that resisted decades of hand-crafted rules.",
+    "key_takeaways": [
+      "A neuron computes a weighted sum plus bias, then applies an activation.",
+      "A layer is many neurons operating on the same inputs.",
+      "Stacking layers gives the network power — this is what 'deep' means.",
+      "The architecture is designed; the weights are learned.",
+      "Neural networks are behind almost all modern AI."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "A neuron computes a weighted sum of inputs plus a bias, then applies an ___ function.",
+      "options": ["activation", "input", "output"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "ReLU(x) = max(0, x). What is ReLU(-2.5)?",
+      "choices": ["0", "-2.5", "2.5"],
+      "correct_index": 0,
+      "reveal": "ReLU clips negative values to zero. ReLU(-2.5) = 0."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If a network has three linear layers but no activation functions between them, what is its effective power?",
+      "choices": [
+        "Much more powerful than one layer",
+        "Exactly equivalent to one linear layer",
+        "Equivalent to a decision tree"
+      ],
+      "correct_index": 1,
+      "reveal": "Without nonlinear activations, stacking linear layers is mathematically the same as a single linear layer. Nonlinearity is what makes depth useful."
+    }},
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "def neuron(inputs, weights, bias):\n    z = sum(i * w for i, w in zip(inputs, weights))\n    return z\n\n# The network should have nonlinearity\nout = neuron([1.0, 2.0], [0.5, 0.3], 0.1)\nprint(out)",
+      "wrong_line": 3,
+      "explanation": "The neuron returns the weighted sum without applying an activation function. Without activation, this network cannot learn anything beyond linear patterns. The function should return relu(z) or another activation applied to z."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why depth (stacking layers) gives a neural network more power than a single layer.",
+      "rubric": "Should mention that layers compose: early layers learn simple patterns, later layers combine them into complex features. Without stacking, only linear functions are possible; with stacking, nonlinear compositions emerge.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The two things a neural network learns during training are weights and ___.",
+      "options": ["biases", "inputs", "losses"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "A layer has 4 neurons. It receives a 3-dimensional input. What is the shape of its output?",
+      "choices": ["3-dimensional", "4-dimensional", "12-dimensional"],
+      "correct_index": 1,
+      "reveal": "Each neuron produces one output. Four neurons → four outputs, regardless of input size."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "def network(x):\n    h1 = [relu(x[0] * 0.5 + 0.1), relu(x[1] * 0.3 - 0.2)]\n    out = h1[0] * 0.7 + h1[1] * 0.4\n    return out\n\nx = [1.0, 2.0]\nprint(network(x))",
+      "wrong_line": 3,
+      "explanation": "Line 3 computes a linear combination of the hidden layer outputs but does not apply an activation to it. Without activation, the output is still linear in the hidden layer, weakening the network. It should be relu(h1[0] * 0.7 + h1[1] * 0.4) or similar."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Input passes through the first layer (weighted sum + activation)",
+        "The first layer's output becomes input to the second layer",
+        "Each subsequent layer transforms the previous layer's output",
+        "The final layer produces the network's prediction"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why a network without activation functions is equivalent to a single linear layer.",
+      "rubric": "Should mention that composition of linear functions is still linear — a linear function of a linear function is itself linear. Nonlinearity requires an activation function.",
+      "min_words": 20
+    }
+  ]
+}

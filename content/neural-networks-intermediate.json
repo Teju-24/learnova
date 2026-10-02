@@ -1,0 +1,142 @@
+{
+  "concept_slug": "neural-networks",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Neural Networks: Architecture and Forward Pass",
+    "summary": "A neural network is a chain of matrix multiplications and nonlinearities. Understanding the forward pass is the key to reading any network architecture.",
+    "learning_goals": [
+      "Read the forward pass as a chain of matrix operations",
+      "Understand activation functions and why they matter",
+      "Recognise common architectures (MLP, CNN, transformer)",
+      "Implement a small network in NumPy"
+    ],
+    "long_intro": "Now that you know neurons and layers, it is time to see the full picture. A neural network is a function built out of matrix multiplications and nonlinear activations. The forward pass takes an input, passes it through each layer in sequence, and produces an output. In modern frameworks, the forward pass is written as a few lines of code — but understanding what those lines do at the matrix level is what lets you debug, design, and reason about architectures. This lesson builds that understanding from the ground up.",
+    "deep_explanation": [
+      {
+        "heading": "The forward pass as matrix multiplication",
+        "body": "Each layer computes W @ x + b, where W is a matrix of weights (one row per neuron), x is the input vector, and b is the bias vector. The result is then passed through an activation function applied element-wise. Stacking L layers gives: h_1 = σ(W_1 x + b_1); h_2 = σ(W_2 h_1 + b_2); ...; y = σ_out(W_L h_{L-1} + b_L). This is the entire forward pass. Every framework — PyTorch, TensorFlow, JAX — computes exactly this, just efficiently on GPUs.",
+        "code": "def forward(x, layers):\n    h = x\n    for W, b in layers:\n        h = [max(0, sum(wi * hi for wi, hi in zip(row, h)) + bi)\n             for row, bi in zip(W, b)]\n    return h\n\nx = [1.0, 0.5]\nlayers = [\n    ([[0.5, 0.2], [0.3, 0.9], [0.7, -0.4]], [0.1, -0.1, 0.2]),\n    ([[0.6, -0.5, 0.8]], [0.0]),\n]\nprint(forward(x, layers))   # [~0.84]"
+      },
+      {
+        "heading": "Activation functions and why they matter",
+        "body": "Without activation functions, stacking linear layers collapses to a single linear layer — mathematically, W_2(W_1 x) = (W_2 W_1) x. Activations are what give networks the ability to represent nonlinear functions. Common choices: ReLU (fast, sparse, default for hidden layers), sigmoid (smooth, range 0 to 1, used for binary outputs), softmax (used for probability distributions over classes), and tanh (smooth, range -1 to 1, sometimes better than sigmoid). The choice matters — ReLU helps gradients flow in deep networks, while sigmoid and tanh saturate and can cause vanishing gradients.",
+        "code": "import math\n\ndef relu(x):    return max(0.0, x)\ndef sigmoid(x): return 1 / (1 + math.exp(-x))\ndef tanh(x):    return math.tanh(x)\n\nvals = [-2.0, -0.5, 0.5, 2.0]\nfor v in vals:\n    print(f\"x={v:5.1f}  relu={relu(v):5.2f}  sigmoid={sigmoid(v):5.2f}  tanh={tanh(v):5.2f}\")"
+      },
+      {
+        "heading": "Common architectures",
+        "body": "Different problems need different architectures. A multi-layer perceptron (MLP) is a stack of fully connected layers — the simplest network, used for tabular data. A convolutional neural network (CNN) uses local filters and weight sharing to process images efficiently. A transformer uses attention to process sequences, and is the basis of every modern language model. All three share the same primitive: matrix multiplications followed by nonlinearities, stacked in different patterns. Understanding the primitive lets you understand the variations.",
+        "code": "# Architectures in shape notation\narchitectures = {\n    \"MLP (tabular)\":       \"input → dense(256) → relu → dense(10)\",\n    \"CNN (images)\":         \"input → conv → relu → pool → dense → softmax\",\n    \"Transformer (text)\":   \"input → attention → feedforward → attention → ...\",\n}\n\nfor name, shape in architectures.items():\n    print(f\"{name}: {shape}\")"
+      },
+      {
+        "heading": "Building a small network in NumPy",
+        "body": "Here is a complete two-layer network implemented with NumPy. The forward pass is a sequence of matrix multiplications and ReLU applications. If you understand this code, you understand the forward pass of any neural network, no matter how large. The matrix sizes are the only thing that changes at scale.",
+        "code": "import numpy as np\n\ndef relu(x):\n    return np.maximum(0, x)\n\ndef forward(x):\n    W1 = np.array([[0.5, 0.2], [0.3, 0.9], [0.7, -0.4]])\n    b1 = np.array([0.1, -0.1, 0.2])\n    W2 = np.array([[0.6, -0.5, 0.8]])\n    b2 = np.array([0.0])\n\n    h = relu(W1 @ x + b1)\n    out = W2 @ h + b2\n    return out\n\nx = np.array([1.0, 0.5])\nprint(forward(x))"
+      }
+    ],
+    "formal_definition": "A feedforward neural network with L layers defines a function y = f_L ∘ f_{L-1} ∘ ... ∘ f_1 (x) where f_i(h) = σ_i(W_i h + b_i). W_i ∈ R^{n_i × n_{i-1}} and b_i ∈ R^{n_i} are the parameters. The activation σ_i is applied element-wise. Universal approximation guarantees that a network with one sufficiently wide hidden layer can approximate any continuous function on a compact set to arbitrary accuracy; deep networks often achieve the same approximation with exponentially fewer parameters.",
+    "code_example": {
+      "language": "python",
+      "code": "import numpy as np\n\ndef relu(x):\n    return np.maximum(0, x)\n\ndef softmax(x):\n    e = np.exp(x - np.max(x))\n    return e / e.sum()\n\n# Network: 4-dim input → 3-dim hidden → 2-dim output\nW1 = np.random.randn(3, 4) * 0.1\nb1 = np.zeros(3)\nW2 = np.random.randn(2, 3) * 0.1\nb2 = np.zeros(2)\n\nx = np.array([1.0, 0.5, -0.3, 0.8])\nh = relu(W1 @ x + b1)\nlogits = W2 @ h + b2\nprobs = softmax(logits)\n\nprint(\"probabilities:\", probs)\nprint(\"predicted class:\", np.argmax(probs))",
+      "universal_explanation": "A four-dimensional input runs through a three-neuron hidden layer, producing three hidden activations. Those are transformed into two output logits, which softmax converts to probabilities. The predicted class is the one with the highest probability. This is the forward pass of a tiny classifier — the same shape as a real image classifier, just with fewer dimensions."
+    },
+    "common_mistakes": [
+      "Forgetting the activation after the output layer depends on the task: for classification, softmax; for regression, none.",
+      "Initialising weights to zero: this causes every neuron in a layer to compute the same output, breaking symmetry. Weights should be random.",
+      "Using sigmoid or tanh in very deep networks: they saturate and cause vanishing gradients. ReLU or its variants work better.",
+      "Assuming deeper is always better: without enough data and regularisation, deeper networks overfit. Depth should match the problem."
+    ],
+    "real_world_usage": "The forward pass you just implemented is at the heart of every modern AI model. GPT-4 has roughly 1.8 trillion parameters arranged in a deep transformer — but each layer is still W @ x + b followed by an activation. Image classification, speech recognition, and machine translation all use the same fundamental pattern, just with more layers and more parameters. Understanding the forward pass means understanding what a model is actually computing.",
+    "key_takeaways": [
+      "The forward pass is a chain of matrix multiplications and activations.",
+      "Activations are what give networks nonlinearity.",
+      "MLPs, CNNs, and transformers are all built from the same primitive.",
+      "Weight initialisation matters — zeros break symmetry.",
+      "Every modern AI model's forward pass follows this pattern."
+    ],
+    "estimated_minutes": 11
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "A layer computes W @ x + b, then applies a(n) ___ function element-wise.",
+      "options": ["activation", "identity", "matrix"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Which activation function is most commonly used for hidden layers in modern deep networks?",
+      "choices": ["Sigmoid", "Tanh", "ReLU"],
+      "correct_index": 2,
+      "reveal": "ReLU is the default because it does not saturate for positive inputs, so gradients flow well in deep networks."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "An image classifier has 10 classes. Which activation should be applied to the final layer?",
+      "choices": ["ReLU", "Sigmoid", "Softmax"],
+      "correct_index": 2,
+      "reveal": "Softmax converts a vector of scores to a probability distribution over the 10 classes. ReLU does not produce probabilities; sigmoid is for binary problems."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "import numpy as np\n\ndef init_layer(n_in, n_out):\n    W = np.zeros((n_out, n_in))    # weight matrix\n    b = np.zeros(n_out)\n    return W, b\n\nW, b = init_layer(4, 3)\nprint(W)",
+      "wrong_line": 4,
+      "explanation": "Weights are initialised to zero. This breaks symmetry — every neuron in a layer will produce the same output and receive the same gradient, so the network cannot learn distinct features. Weights should be random (e.g., np.random.randn(...) * 0.01)."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why activation functions are essential to neural networks.",
+      "rubric": "Should mention that without activations, stacking layers collapses to a single linear function. Activations introduce nonlinearity, which is what allows networks to represent complex functions.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "The forward pass of a neural network is a chain of matrix multiplications and ___ functions.",
+      "options": ["activation", "loss", "gradient"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "A layer has shape W ∈ R^(5×3). What is the input dimension and what is the output dimension?",
+      "choices": [
+        "Input 5, output 3",
+        "Input 3, output 5",
+        "Input 5, output 5"
+      ],
+      "correct_index": 1,
+      "reveal": "W has 5 rows (5 neurons) and 3 columns (3 input features). Input dimension is 3, output dimension is 5."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "import numpy as np\n\ndef forward(x):\n    W1 = np.random.randn(3, 2) * 0.1\n    b1 = np.zeros(3)\n    h = W1 @ x + b1\n    return h  # return hidden layer directly",
+      "wrong_line": 7,
+      "explanation": "The hidden layer output is returned without applying an activation. Without activation, the network is linear and cannot learn nonlinear patterns. Line 7 should apply relu: return np.maximum(0, W1 @ x + b1)."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Compute the linear transformation W @ x + b",
+        "Apply the activation function element-wise",
+        "Pass the result as input to the next layer",
+        "Repeat for every layer up to the output"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why weights are initialised randomly rather than to zero.",
+      "rubric": "Should mention symmetry breaking — if all weights are zero, all neurons in a layer compute the same output and receive the same gradient, so the layer cannot learn distinct features.",
+      "min_words": 20
+    }
+  ]
+}

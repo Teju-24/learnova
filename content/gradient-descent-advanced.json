@@ -1,0 +1,150 @@
+{
+  "concept_slug": "gradient-descent",
+  "tier": "advanced",
+  "concept_note": {
+    "title": "Gradient Descent: Advanced Methods",
+    "summary": "Beyond vanilla SGD: momentum, Nesterov acceleration, Adam, and second-order methods. Understand convergence guarantees and when each optimizer wins.",
+    "learning_goals": [
+      "Understand Nesterov accelerated gradient",
+      "Read the Adam update rule",
+      "Choose an optimizer for a given problem",
+      "Understand convergence rate bounds"
+    ],
+    "long_intro": "You already know gradient descent, SGD, and momentum. This lesson goes deeper. Nesterov accelerated gradient adds a lookahead step to momentum, achieving O(1/k²) convergence for smooth convex functions — provably faster than plain momentum. Adam combines momentum with per-parameter adaptive learning rates and is the default optimizer for most deep learning. Second-order methods like Newton's method converge in fewer iterations but cost more per step. This lesson gives you the intuition to pick the right optimizer for a given problem, and the math to understand why each one works.",
+    "deep_explanation": [
+      {
+        "heading": "Nesterov accelerated gradient",
+        "body": "Momentum computes the gradient at the current point, then combines it with the previous velocity. Nesterov's insight: compute the gradient at the point where the momentum would take you, then correct. Formally, v = β*v - lr*∇f(θ + β*v); θ = θ + v. The 'lookahead' makes the optimizer less prone to overshooting and gives a proven convergence rate of O(1/k²) for smooth convex functions — faster than the O(1/k) of plain gradient descent.",
+        "code": "def nesterov_update(theta, v, beta, lr, grad_fn):\n    lookahead = theta + beta * v\n    grad = grad_fn(lookahead)\n    v_new = beta * v - lr * grad\n    theta_new = theta + v_new\n    return theta_new, v_new\n\nprint('Nesterov: lookahead → faster convergence')"
+      },
+      {
+        "heading": "Adam: bias-corrected moment estimation",
+        "body": "Adam maintains running estimates of the first moment (mean of gradients) and second moment (mean of squared gradients). The bias correction terms (1 - β1^t) and (1 - β2^t) compensate for the fact that the running estimates are initialized at zero — without them, the first few steps are heavily biased toward zero. The update divides the first moment by the square root of the second moment, giving an effective per-parameter learning rate. This is why Adam is robust to learning rate choices and works well as a default.",
+        "code": "def adam_update(theta, m, v, t, grad, lr=0.001, b1=0.9, b2=0.999, eps=1e-8):\n    m = b1 * m + (1 - b1) * grad\n    v = b2 * v + (1 - b2) * grad ** 2\n    m_hat = m / (1 - b1 ** t)\n    v_hat = v / (1 - b2 ** t)\n    theta = theta - lr * m_hat / (v_hat ** 0.5 + eps)\n    return theta, m, v\n\nprint('Adam: bias-corrected moment estimation')"
+      },
+      {
+        "heading": "Second-order methods",
+        "body": "Gradient descent uses first-order information (the gradient). Second-order methods use the Hessian — the matrix of second derivatives — to make a better-informed step. Newton's method updates θ = θ - H⁻¹∇f, which converges quadratically near a minimum but costs O(n³) per step for n parameters. Quasi-Newton methods like BFGS approximate the Hessian cheaply. For deep learning with millions of parameters, second-order methods are usually too expensive; the field has largely settled on first-order methods with adaptive learning rates.",
+        "code": "def newton_step(theta, grad, hessian):\n    import numpy as np\n    return theta - np.linalg.solve(hessian, grad)\n\nprint('Newton: O(n^3) per step, quadratic convergence')"
+      },
+      {
+        "heading": "Choosing an optimizer",
+        "body": "AdamW is the default for most deep learning. SGD with momentum still wins on some image classification benchmarks when heavily tuned. LAMB is used for very large batch training. For small datasets, second-order methods or even plain L-BFGS can be better. The choice depends on the problem: how much data, how deep the model, how much compute. There is no universally best optimizer — only optimizers that work well for your specific problem.",
+        "code": "optimizers = {\n    'AdamW': 'default for deep learning',\n    'SGD+momentum': 'best for some vision tasks with tuning',\n    'LAMB': 'large batch training',\n    'L-BFGS': 'small datasets, second-order',\n}\nfor name, use in optimizers.items():\n    print(f'{name}: {use}')"
+      }
+    ],
+    "formal_definition": "Nesterov accelerated gradient: v_{t+1} = β v_t - η∇f(θ_t + β v_t), θ_{t+1} = θ_t + v_{t+1}. Adam: m_t = β1 m_{t-1} + (1-β1)g_t; v_t = β2 v_{t-1} + (1-β2)g_t²; m̂_t = m_t/(1-β1^t); v̂_t = v_t/(1-β2^t); θ_{t+1} = θ_t - η m̂_t/(√v̂_t + ε). Convergence rates: gradient descent O(1/k) for smooth convex, Nesterov O(1/k²), Newton quadratic near a minimum.",
+    "code_example": {
+      "language": "python",
+      "code": "def optimize(optimizer='adam', steps=100):\n    x = 5.0\n    lr = 0.1\n    v = 0.0\n    m = 0.0\n    for t in range(1, steps + 1):\n        g = 2 * x\n        if optimizer == 'nesterov':\n            look = x + 0.9 * v\n            g = 2 * look\n            v = 0.9 * v - lr * g\n            x = x + v\n        elif optimizer == 'adam':\n            m = 0.9 * m + 0.1 * g\n            v = 0.999 * v + 0.001 * g * g\n            mh = m / (1 - 0.9 ** t)\n            vh = v / (1 - 0.999 ** t)\n            x = x - lr * mh / (vh ** 0.5 + 1e-8)\n    return x\n\nprint('Nesterov:', optimize('nesterov'))\nprint('Adam:', optimize('adam'))",
+      "universal_explanation": "Both optimizers converge to 0 on this simple problem. The difference is in the convergence speed and stability on harder problems. Adam is more robust across learning rates; Nesterov has stronger theoretical guarantees for smooth convex objectives."
+    },
+    "common_mistakes": [
+      "Forgetting bias correction in Adam: without it, the first few updates are dominated by the zero-initialized moments.",
+      "Using plain momentum when Nesterov's lookahead would help: Nesterov has provably better convergence rates.",
+      "Assuming second-order methods always win: on large models the Hessian cost dominates.",
+      "Tuning Adam's learning rate down when it fails: the failure is usually elsewhere. Adam's default 1e-3 works for most cases."
+    ],
+    "real_world_usage": "AdamW is the optimizer used to train GPT-4, Claude, Gemini, and Llama. SGD with momentum is still used for ResNet training on ImageNet. LAMB enables training BERT with batch sizes of 64k. Every modern training script you will read specifies its optimizer — and now you know why.",
+    "key_takeaways": [
+      "Nesterov accelerated gradient uses a lookahead step for faster convergence.",
+      "Adam combines momentum with per-parameter adaptive learning rates.",
+      "Bias correction in Adam is essential for early training steps.",
+      "Second-order methods are powerful but impractical at deep-learning scale.",
+      "AdamW is the default for modern deep learning."
+    ],
+    "estimated_minutes": 14
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "Nesterov accelerated gradient computes the gradient at a ___ position.",
+      "options": ["lookahead", "retracted", "random"],
+      "correct_index": 0
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why is bias correction needed in Adam?",
+      "choices": [
+        "To speed up training",
+        "Because the running moments are initialized at zero, biasing early steps",
+        "To reduce memory"
+      ],
+      "correct_index": 1,
+      "reveal": "The first and second moment estimates start at zero. Without correction, the first few updates are heavily biased. The correction factor (1-β^t) fixes this."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "Why are second-order methods rarely used in deep learning?",
+      "choices": [
+        "They never converge",
+        "The Hessian cost is O(n³) per step for n parameters",
+        "They require GPUs"
+      ],
+      "correct_index": 1,
+      "reveal": "With billions of parameters, computing and inverting the Hessian is impossible. First-order methods with adaptive learning rates dominate."
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "code_editor",
+      "prompt": "Implement Nesterov accelerated gradient on f(x) = x^2. Start at x = 5.0. Use lr = 0.1 and momentum β = 0.9. Run for 20 steps and print x. Compare the final value to plain momentum (which you can compute mentally — it converges slower).",
+      "starter_code": "x = 5.0\nlr = 0.1\nbeta = 0.9\nv = 0.0\n\n# Loop 20 times:\n#   look = x + beta * v\n#   g = 2 * look\n#   v = beta * v - lr * g\n#   x = x + v\n#   print(x)\n",
+      "reference_code": "x = 5.0\nlr = 0.1\nbeta = 0.9\nv = 0.0\n\nfor step in range(20):\n    look = x + beta * v\n    g = 2 * look\n    v = beta * v - lr * g\n    x = x + v\n    print(x)",
+      "rubric": "The loop computes the lookahead position, evaluates the gradient there, updates velocity using the lookahead gradient, then updates x. Final x should be near 0.",
+      "language": "python",
+      "min_lines": 6
+    }},
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "Explain in one paragraph why AdamW has become the default optimizer for training large language models.",
+      "rubric": "Should mention: Adam's per-parameter adaptive learning rates handle the diversity of gradient scales in deep networks; bias correction makes early training stable; weight decay (W variant) prevents overfitting; default 1e-3 works across many architectures without tuning.",
+      "min_words": 30
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "fill_blank",
+      "sentence": "Nesterov's method achieves O(1/k²) convergence for smooth ___ functions.",
+      "options": ["convex", "concave", "linear"],
+      "correct_index": 0
+    },
+    {
+      "type": "predict",
+      "question": "Which optimizer is the default for training modern LLMs?",
+      "choices": ["SGD", "AdamW", "Newton's method"],
+      "correct_index": 1,
+      "reveal": "AdamW combines momentum with bias-corrected adaptive learning rates and weight decay. It is the default for GPT, Claude, Llama, and every modern LLM."
+    },
+    {
+      "type": "predict",
+      "question": "Which optimizer takes a lookahead step before computing the gradient?",
+      "choices": ["SGD", "Adam", "Nesterov accelerated gradient"],
+      "correct_index": 2,
+      "reveal": "Nesterov evaluates the gradient at θ + β·v, the point where momentum would take you. This lookahead prevents overshooting."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Compute the bias-corrected first moment estimate m̂",
+        "Compute the bias-corrected second moment estimate v̂",
+        "Divide m̂ by √v̂ to get the effective per-parameter step size",
+        "Update the parameter by subtracting lr times that step size"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain why Nesterov's lookahead helps compared to plain momentum.",
+      "rubric": "Should mention that the lookahead anticipates where momentum is heading and corrects before overshooting; gives provable O(1/k²) convergence vs O(1/k) for plain momentum.",
+      "min_words": 25
+    }
+  ]
+}

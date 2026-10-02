@@ -1,0 +1,139 @@
+{
+  "concept_slug": "linear-algebra",
+  "tier": "intermediate",
+  "concept_note": {
+    "title": "Linear Algebra: Dot Product and Similarity",
+    "summary": "The dot product measures how similar two vectors are. It is the single most-used operation in modern AI — it powers attention, embeddings, and recommendations.",
+    "learning_goals": [
+      "Compute the dot product of two vectors",
+      "Understand the dot product as a similarity measure",
+      "See why the dot product appears in every transformer",
+      "Read a cosine similarity calculation in Python"
+    ],
+    "long_intro": "You know that vectors are lists of numbers and that we can add them and scale them. Now we meet the operation that makes AI possible: the dot product. The dot product takes two vectors of the same dimension and produces a single number. That number measures how similar the vectors are. When it is large and positive, the vectors point in similar directions. When it is zero, they are unrelated. When it is negative, they point in opposite directions. This one operation is at the heart of attention, retrieval, recommendation, and every embedding-based system.",
+    "deep_explanation": [
+      {
+        "heading": "The dot product: definition and computation",
+        "body": "The dot product of two vectors a and b of the same dimension is computed by multiplying matching elements together and summing the results. For a = [1, 2, 3] and b = [4, 5, 6], the dot product is 1*4 + 2*5 + 3*6 = 4 + 10 + 18 = 32. The result is a single number, not a vector. In Python, you can compute it with a loop or with sum(a[i] * b[i] for i in range(len(a))). In real AI code, you use numpy: np.dot(a, b) or the @ operator.",
+        "code": "a = [1, 2, 3]\nb = [4, 5, 6]\n\ndot = 0\nfor i in range(len(a)):\n    dot = dot + a[i] * b[i]\n\nprint(dot)   # shows 32"
+      },
+      {
+        "heading": "The dot product as a similarity measure",
+        "body": "The dot product is useful because it tells us how aligned two vectors are. If both vectors point in a similar direction, their dot product is large and positive. If they are perpendicular, it is zero. If they point in opposite directions, it is large and negative. This is why the dot product is used to measure similarity in embeddings: two words with similar meanings have vectors that point in similar directions, so their dot product is high. In a search system, the query vector and each document vector are compared this way, and the highest dot product wins.",
+        "code": "# Simplified: query similarity\ndoc_a = [0.9, 0.1, 0.0]\ndoc_b = [0.0, 0.8, 0.2]\nquery = [0.85, 0.15, 0.0]\n\nsim_a = sum(query[i] * doc_a[i] for i in range(3))\nsim_b = sum(query[i] * doc_b[i] for i in range(3))\n\nprint(\"doc_a:\", sim_a)   # higher\nprint(\"doc_b:\", sim_b)   # lower"
+      },
+      {
+        "heading": "Cosine similarity: normalizing for length",
+        "body": "One problem with the raw dot product: a long vector (with many large values) will produce a large dot product even with a barely-related vector. To fix this, we divide by the lengths of both vectors, giving what is called cosine similarity. This measures the angle between the vectors, ignoring their length. Most modern AI systems use cosine similarity for comparing embeddings, not raw dot products. The formula is (a · b) / (|a| * |b|), where |a| is the Euclidean length of a.",
+        "code": "import math\n\ndef cosine(a, b):\n    dot = sum(a[i] * b[i] for i in range(len(a)))\n    len_a = math.sqrt(sum(x * x for x in a))\n    len_b = math.sqrt(sum(x * x for x in b))\n    return dot / (len_a * len_b)\n\nprint(cosine([1, 0], [1, 0]))    # 1.0 (identical direction)\nprint(cosine([1, 0], [0, 1]))    # 0.0 (perpendicular)"
+      },
+      {
+        "heading": "Why this matters: attention and retrieval",
+        "body": "Two of the most important operations in modern AI are built directly on the dot product. In transformers, the attention mechanism computes dot products between query vectors and key vectors to decide how much each token should pay attention to every other token. In retrieval systems, the query embedding is compared to every document embedding via cosine similarity, and the top-K most similar documents are returned. When you hear that a system 'found the most relevant documents', what actually happened is a bunch of dot products and a sort.",
+        "code": "# Attention intuition (heavily simplified)\nquery = [1.0, 0.5, 0.0]\nkey_1 = [1.0, 0.4, 0.1]\nkey_2 = [0.0, 1.0, 1.0]\n\nscore_1 = sum(query[i] * key_1[i] for i in range(3))\nscore_2 = sum(query[i] * key_2[i] for i in range(3))\n\nprint(\"attention to key_1:\", score_1)  # higher\nprint(\"attention to key_2:\", score_2)  # lower"
+      }
+    ],
+    "formal_definition": "The dot product of vectors a, b in R^n is a · b = Σ(a_i * b_i). It is bilinear, symmetric, and equals |a||b|cos(θ) where θ is the angle between them. Cosine similarity is the normalized dot product (a · b) / (|a||b|), ranging from -1 (opposite) to 1 (identical direction). The dot product is the fundamental bilinear form underlying attention, retrieval, and recommendation systems.",
+    "code_example": {
+      "language": "python",
+      "code": "import math\n\ndef cosine_similarity(a, b):\n    dot = sum(x * y for x, y in zip(a, b))\n    norm_a = math.sqrt(sum(x * x for x in a))\n    norm_b = math.sqrt(sum(x * x for x in b))\n    return dot / (norm_a * norm_b)\n\nv1 = [0.9, 0.1]\nv2 = [0.8, 0.2]\nv3 = [0.1, 0.9]\n\nprint(cosine_similarity(v1, v2))  # ~0.99, similar\nprint(cosine_similarity(v1, v3))  # ~0.26, different",
+      "universal_explanation": "The function computes the cosine similarity between two vectors. v1 and v2 are nearly aligned (both have a large first component), so their similarity is close to 1. v1 and v3 point in very different directions, so their similarity is much lower. This is how a search system decides which documents are relevant to a query."
+    },
+    "common_mistakes": [
+      "Using raw dot product when comparing vectors of different lengths: raw dot products inflate with magnitude. Normalize with cosine similarity when comparing embeddings.",
+      "Mismatched dimensions: the dot product requires both vectors to have the same dimension. Passing vectors of different lengths raises an error.",
+      "Confusing dot product (a scalar) with element-wise product (a vector). [1, 2, 3] · [4, 5, 6] is 32 (a number), but [1*4, 2*5, 3*6] is [4, 10, 18] (a vector). Both are used in AI, but for different purposes.",
+      "Forgetting that a large dot product can mean either high similarity or high magnitude: always normalize when comparing direction."
+    ],
+    "real_world_usage": "Every transformer model — GPT, Claude, Gemini, Llama — uses the dot product inside its attention mechanism. Every embedding-based search system (Google, Pinterest, Spotify) uses cosine similarity for retrieval. Every recommendation system that suggests 'users who liked this also liked' uses the dot product between user and item vectors. When you ask a chatbot a question and it retrieves relevant documents, dozens of dot products are being computed per query.",
+    "key_takeaways": [
+      "The dot product multiplies matching elements and sums them.",
+      "It measures how aligned two vectors are.",
+      "Cosine similarity normalizes the dot product by vector lengths.",
+      "Attention in transformers is built on dot products.",
+      "Search and recommendation systems use cosine similarity to rank results."
+    ],
+    "estimated_minutes": 10
+  },
+  "timeline": [
+    { "type": "section", "section_id": "long_intro" },
+    { "type": "section", "section_id": "deep_explanation.0" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "What is [1, 2] dot [3, 4]?",
+      "choices": ["7", "11", "10"],
+      "correct_index": 1,
+      "reveal": "1*3 + 2*4 = 3 + 8 = 11."
+    }},
+    { "type": "section", "section_id": "deep_explanation.1" },
+    { "type": "activity", "activity": {
+      "type": "predict",
+      "question": "If a = [1, 0] and b = [0, 1], what is a dot b?",
+      "choices": ["0", "1", "2"],
+      "correct_index": 0,
+      "reveal": "1*0 + 0*1 = 0. Perpendicular vectors have a dot product of 0."
+    }},
+    { "type": "section", "section_id": "deep_explanation.2" },
+    { "type": "section", "section_id": "code_example" },
+    { "type": "activity", "activity": {
+      "type": "fill_blank",
+      "sentence": "If two vectors point in the same direction, their cosine similarity is close to ___.",
+      "options": ["0", "1", "-1"],
+      "correct_index": 1
+    }},
+    { "type": "section", "section_id": "deep_explanation.3" },
+    { "type": "activity", "activity": {
+      "type": "spot_mistake",
+      "code": "def similarity(a, b):\n    dot = sum(a[i] * b[i] for i in range(len(a)))\n    return dot\n\n# vectors of different magnitudes\nv1 = [10, 10]\nv2 = [1, 1]\nprint(similarity(v1, v2))",
+      "wrong_line": 5,
+      "explanation": "The function returns the raw dot product, not the cosine similarity. v1 and v2 point in the same direction, so similarity should be near 1.0, but the raw dot product gives 20.0, which is misleading. The function should normalize by dividing by the lengths of both vectors."
+    }},
+    { "type": "section", "section_id": "common_mistakes" },
+    { "type": "section", "section_id": "real_world_usage" },
+    { "type": "activity", "activity": {
+      "type": "explain",
+      "prompt": "In your own words, explain why the dot product is used to measure similarity between embeddings, and why cosine similarity is often preferred over the raw dot product.",
+      "rubric": "Should say the dot product measures alignment of vectors; cosine similarity normalizes to remove the effect of vector magnitude so it measures direction only.",
+      "min_words": 25
+    }},
+    { "type": "section", "section_id": "key_takeaways" }
+  ],
+  "test": [
+    {
+      "type": "predict",
+      "question": "What is [2, 3, 4] dot [1, 1, 1]?",
+      "choices": ["9", "6", "24"],
+      "correct_index": 0,
+      "reveal": "2*1 + 3*1 + 4*1 = 9."
+    },
+    {
+      "type": "predict",
+      "question": "If two vectors are perpendicular, what is their cosine similarity?",
+      "choices": ["1", "0", "-1"],
+      "correct_index": 1,
+      "reveal": "Perpendicular vectors have a dot product of 0, and dividing by nonzero lengths still gives 0."
+    },
+    {
+      "type": "spot_mistake",
+      "code": "import math\n\ndef cos_sim(a, b):\n    dot = sum(x * y for x, y in zip(a, b))\n    len_a = math.sqrt(sum(x * x for x in a))\n    return dot / len_a\n\nprint(cos_sim([1, 0], [0, 1]))",
+      "wrong_line": 6,
+      "explanation": "The formula divides by the length of a but not by the length of b. Cosine similarity requires dividing by both lengths: dot / (len_a * len_b). As written, the function returns an incorrect value."
+    },
+    {
+      "type": "order_steps",
+      "items": [
+        "Given a query vector and a collection of document vectors",
+        "Compute the cosine similarity between query and each document",
+        "Sort the documents by similarity descending",
+        "Return the top-K most similar documents"
+      ],
+      "correct_order": [0, 1, 2, 3]
+    },
+    {
+      "type": "explain",
+      "prompt": "In one or two sentences, explain where the dot product is used inside a transformer model.",
+      "rubric": "Should mention the attention mechanism, where query and key vectors are compared with dot products to determine how much each token attends to others.",
+      "min_words": 15
+    }
+  ]
+}
